@@ -725,6 +725,24 @@ export default function GigCalendar() {
           <ViewToggle view={view} onChange={setView} calendar={calendar} />
         </div>
 
+        {calendar.imageSrc && (
+          <figure className="relative mb-10 overflow-hidden rounded-sm border border-olive-800 bg-olive-900 shadow-xl shadow-black/30 md:mb-12">
+            <img
+              src={calendar.imageSrc}
+              alt={calendar.imageAlt}
+              className="aspect-[16/10] w-full object-cover object-[center_35%] sm:aspect-[21/9]"
+            />
+            <div
+              className="pointer-events-none absolute inset-0 bg-gradient-to-t from-olive-950/70 via-olive-950/10 to-transparent"
+              aria-hidden
+            />
+            <div
+              className="pointer-events-none absolute bottom-0 left-0 h-1 w-24 bg-gold-400/60"
+              aria-hidden
+            />
+          </figure>
+        )}
+
         <div className="overflow-hidden rounded-sm border border-olive-800">
           {configMissing ? (
             <p className="border-b border-olive-800 bg-amber-500/10 px-6 py-4 text-sm text-amber-200">

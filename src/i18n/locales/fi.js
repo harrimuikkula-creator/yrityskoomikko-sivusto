@@ -39,7 +39,7 @@ const fi = {
 
   hero: {
     eyebrow: 'Huumoria ja naurua yksityis- ja yritysjuhliin',
-    title: 'Etsitkö varmaa hauskuutta juhliisi?',
+    title: 'Tee juhlistasi hauskemmat!',
     subtitle:
       'Tuon ammattimaisen stand-up -show\'n pikkujouluihin, kesäpäiviin, häihin tai vaikkapa asiakastilaisuuksiin. Komediaa, jolle on helppo ja turvallista nauraa! Pystyn esiintymään sekä suomeksi, että englanniksi.',
     ctaPrimary: 'Tarkista saatavuus',
@@ -51,6 +51,8 @@ const fi = {
 
   about: {
     title: 'Kuka on Harri Muikkula?',
+    imageSrc: '/images/about-harri.png',
+    imageAlt: 'Harri Muikkula hymyilee, vihreä paita — ammattikuva',
     paragraphs: [
       'Olen jalkani Helsinkiin betonoinut oululainen koomikko, jonka lavaenergia peittoaa ruuhkavuodet ja kahden pienen lapsen aiheuttamat univelat. Tarinani koukuttavat ja sitovat yleisön nauru-umpisolmuun – joka toivottavasti aukeaa viimeistään kotimatkalla.',
       'Olen esiintynyt klubeilla ympäri Suomen Rovaniemeltä Helsinkiin, ja minulla on kokemusta myös kansainvälisistä ympyröistä – olen keikkailut Malesiassa ja Singaporessa.',
@@ -177,6 +179,8 @@ const fi = {
     eyebrow: 'Keikkakalenteri',
     title: 'Tulevat keikat',
     subtitle: 'Täällä voit nähdä minut livenä.',
+    imageSrc: '/images/calendar-gig.png',
+    imageAlt: 'Harri Muikkula esiintymässä lavalla mikrofon kädessä',
     viewList: 'Lista',
     viewCalendar: 'Kalenteri',
     viewAriaLabel: 'Keikkojen näkymä',

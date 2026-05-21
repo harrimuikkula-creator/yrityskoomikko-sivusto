@@ -39,7 +39,7 @@ const en = {
 
   hero: {
     eyebrow: 'Humour and laughter for private and corporate celebrations',
-    title: 'Looking for guaranteed fun for your event?',
+    title: 'Make your celebration more fun!',
     subtitle:
       'I bring a professional stand-up show to Christmas parties, summer parties, weddings, and customer events. Comedy that is easy and safe to laugh at! I perform in both Finnish and English.',
     ctaPrimary: 'Check availability',
@@ -51,6 +51,8 @@ const en = {
 
   about: {
     title: 'Who is Harri Muikkula?',
+    imageSrc: '/images/about-harri.png',
+    imageAlt: 'Harri Muikkula smiling in a green shirt — professional portrait',
     paragraphs: [
       'From the chilly north of Finland, I bring boundless stage energy that completely wipes out the exhaustion that comes from being a dad of two little boys. Basically, I have enough kids, but not enough time. My addictive stories will draw you in and tie you into a tight knot of laughter—which will hopefully loosen up by the time you\'re heading back home.',
       'I\'ve performed at clubs across Finland from Rovaniemi to Helsinki, and I also have international experience — I\'ve gigged in Malaysia and Singapore.',
@@ -177,6 +179,8 @@ const en = {
     eyebrow: 'Gig calendar',
     title: 'Upcoming gigs',
     subtitle: 'See where you can catch me live.',
+    imageSrc: '/images/calendar-gig.png',
+    imageAlt: 'Harri Muikkula performing on stage with a microphone',
     viewList: 'List',
     viewCalendar: 'Calendar',
     viewAriaLabel: 'Gig view',
