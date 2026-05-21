@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { collection, getDocs, query, orderBy } from 'firebase/firestore'
 import { useLanguage } from '../i18n/LanguageContext'
-import { db, ensureFirebaseSession } from '../lib/firebase'
+import { db, ensureFirebaseSession, isFirebaseConfigured } from '../lib/firebase'
 import SectionHeading from './ui/SectionHeading'
 
 function getMonthFormatter(dateLocale) {
@@ -304,58 +304,134 @@ function ViewToggle({ view, onChange, calendar }) {
   )
 }
 
+function GigListRow({ gig, calendar }) {
+  const hasCity = gig.city && gig.city !== '-'
+
+  return (
+    <li className="grid gap-1.5 px-4 py-2.5 transition-colors hover:bg-olive-900/40 sm:grid-cols-[7.5rem_1fr_auto] sm:items-center sm:gap-3 md:px-5">
+      <time className="text-xs font-semibold tabular-nums text-gold-400 sm:text-sm">
+        {gig.date}
+      </time>
+      <div className="min-w-0">
+        {gig.isFestival && (
+          <span className="mb-0.5 inline-flex rounded-sm bg-gold-400/15 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-gold-300">
+            {calendar.festival}
+          </span>
+        )}
+        <p className="text-sm font-medium leading-snug text-cream">{gig.displayPlace}</p>
+        {gig.displaySubtitle && (
+          <p className="text-xs leading-snug text-cream-muted">{gig.displaySubtitle}</p>
+        )}
+        {hasCity && (
+          <p className="mt-0.5 text-xs text-olive-400 sm:hidden">{gig.city}</p>
+        )}
+        {gig.ticketUrl && (
+          <TicketLink
+            ticketUrl={gig.ticketUrl}
+            label={calendar.tickets}
+            className="mt-1 text-xs"
+          />
+        )}
+      </div>
+      {hasCity && (
+        <p className="hidden text-right text-xs font-medium text-gold-300/90 sm:block">
+          {gig.city}
+        </p>
+      )}
+    </li>
+  )
+}
+
 function GigListView({ monthlyGroups, calendar }) {
+  const collapsedInit = useRef(false)
+  const [collapsedMonths, setCollapsedMonths] = useState(() => new Set())
+
+  useEffect(() => {
+    if (collapsedInit.current || monthlyGroups.length <= 1) return
+    collapsedInit.current = true
+    setCollapsedMonths(
+      new Set(monthlyGroups.slice(1).map((group) => group.monthKey)),
+    )
+  }, [monthlyGroups])
+
+  function toggleMonth(monthKey) {
+    setCollapsedMonths((prev) => {
+      const next = new Set(prev)
+      if (next.has(monthKey)) next.delete(monthKey)
+      else next.add(monthKey)
+      return next
+    })
+  }
+
   if (monthlyGroups.length === 0) {
     return (
-      <p className="px-6 py-8 text-sm text-cream-muted">{calendar.empty}</p>
+      <p className="px-4 py-6 text-sm text-cream-muted md:px-5">{calendar.empty}</p>
     )
   }
 
-  return monthlyGroups.map((group) => (
-    <div key={group.monthLabel} className="border-b border-olive-800 last:border-b-0">
-      <h3 className="bg-olive-900/60 px-6 py-4 text-sm font-semibold uppercase tracking-wider text-olive-300">
-        {group.monthLabel}
-      </h3>
-      <div className="hidden grid-cols-[140px_1fr_180px] gap-4 border-b border-olive-800 px-6 py-3 text-xs font-semibold uppercase tracking-wider text-olive-400 md:grid">
+  return (
+    <div>
+      <div className="hidden border-b border-olive-800 bg-olive-900/30 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-olive-500 sm:grid sm:grid-cols-[7.5rem_1fr_auto] sm:gap-3 md:px-5">
         <span>{calendar.dateColumn}</span>
         <span>{calendar.placeColumn}</span>
         <span className="text-right">{calendar.cityColumn}</span>
       </div>
-      <ul className="divide-y divide-olive-800">
-        {group.gigs.map((gig) => (
-          <li
-            key={gig.id}
-            className="grid gap-3 px-6 py-5 transition-colors hover:bg-olive-900/40 md:grid-cols-[140px_1fr_180px] md:items-center md:gap-4"
+
+      {monthlyGroups.map((group) => {
+        const isCollapsed = collapsedMonths.has(group.monthKey)
+        const panelId = `gig-month-${group.monthKey}`
+
+        return (
+          <div
+            key={group.monthKey}
+            className="border-b border-olive-800 last:border-b-0"
           >
-            <time className="text-sm font-semibold text-gold-400 md:text-base">
-              {gig.date}
-            </time>
-            <div>
-              {gig.isFestival && (
-                <span className="mb-1 inline-flex rounded-sm bg-gold-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold-300">
-                  {calendar.festival}
-                </span>
-              )}
-              <p className="text-base font-medium text-cream">{gig.displayPlace}</p>
-              {gig.displaySubtitle && (
-                <p className="mt-1 text-sm text-cream-muted">{gig.displaySubtitle}</p>
-              )}
-              {gig.ticketUrl && (
-                <TicketLink
-                  ticketUrl={gig.ticketUrl}
-                  label={calendar.tickets}
-                  className="mt-2"
+            <button
+              type="button"
+              aria-expanded={!isCollapsed}
+              aria-controls={panelId}
+              onClick={() => toggleMonth(group.monthKey)}
+              className="flex w-full items-center gap-3 bg-olive-900/60 px-4 py-2.5 text-left transition-colors hover:bg-olive-900/80 md:px-5"
+            >
+              <svg
+                className={`h-4 w-4 shrink-0 text-gold-400 transition-transform ${
+                  isCollapsed ? '' : 'rotate-90'
+                }`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M8.25 4.5l7.5 7.5-7.5 7.5"
                 />
-              )}
-            </div>
-            <div className="md:text-right">
-              <CityBadge city={gig.city} />
-            </div>
-          </li>
-        ))}
-      </ul>
+              </svg>
+              <span className="min-w-0 flex-1 text-sm font-semibold uppercase tracking-wider text-olive-300">
+                {group.monthLabel}
+              </span>
+              <span className="shrink-0 text-xs text-olive-500">
+                {calendar.gigsInMonth(group.gigs.length)}
+              </span>
+              <span className="sr-only">
+                {isCollapsed ? calendar.expandMonth : calendar.collapseMonth}
+              </span>
+            </button>
+
+            {!isCollapsed && (
+              <ul id={panelId} className="divide-y divide-olive-800/80">
+                {group.gigs.map((gig) => (
+                  <GigListRow key={gig.id} gig={gig} calendar={calendar} />
+                ))}
+              </ul>
+            )}
+          </div>
+        )
+      })}
     </div>
-  ))
+  )
 }
 
 function getCalendarDays(year, month) {
@@ -550,6 +626,7 @@ export default function GigCalendar() {
     ),
   )
   const [syncFailed, setSyncFailed] = useState(false)
+  const [configMissing, setConfigMissing] = useState(!isFirebaseConfigured)
   const [view, setView] = useState('list')
 
   const today = new Date()
@@ -579,10 +656,13 @@ export default function GigCalendar() {
         const monthLabel = gig.parsedDate
           ? monthFormatter.format(gig.parsedDate)
           : calendar.otherGigs
+        const monthKey = gig.parsedDate
+          ? `${gig.parsedDate.getFullYear()}-${gig.parsedDate.getMonth()}`
+          : 'other'
         const lastGroup = acc[acc.length - 1]
 
-        if (!lastGroup || lastGroup.monthLabel !== monthLabel) {
-          acc.push({ monthLabel, gigs: [gig] })
+        if (!lastGroup || lastGroup.monthKey !== monthKey) {
+          acc.push({ monthLabel, monthKey, gigs: [gig] })
         } else {
           lastGroup.gigs.push(gig)
         }
@@ -602,7 +682,13 @@ export default function GigCalendar() {
     }
 
     const loadGigs = async () => {
-      if (!db) return
+      if (!db) {
+        setConfigMissing(true)
+        setSyncFailed(false)
+        return
+      }
+
+      setConfigMissing(false)
 
       try {
         const fetchedGigs = await fetchFirestoreGigs()
@@ -640,7 +726,12 @@ export default function GigCalendar() {
         </div>
 
         <div className="overflow-hidden rounded-sm border border-olive-800">
-          {syncFailed && fallbackGigs.length === 0 ? (
+          {configMissing ? (
+            <p className="border-b border-olive-800 bg-amber-500/10 px-6 py-4 text-sm text-amber-200">
+              {calendar.configMissing}
+            </p>
+          ) : null}
+          {syncFailed && !configMissing && fallbackGigs.length === 0 ? (
             <p className="border-b border-olive-800 bg-amber-500/10 px-6 py-4 text-sm text-amber-200">
               {calendar.syncFailed}
             </p>

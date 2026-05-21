@@ -11,9 +11,14 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
-const hasRequiredConfig = Boolean(firebaseConfig.projectId)
+export const isFirebaseConfigured = Boolean(
+  firebaseConfig.apiKey &&
+    firebaseConfig.authDomain &&
+    firebaseConfig.projectId &&
+    firebaseConfig.appId,
+)
 
-const app = hasRequiredConfig ? initializeApp(firebaseConfig) : null
+const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null
 
 export const db = app ? getFirestore(app) : null
 

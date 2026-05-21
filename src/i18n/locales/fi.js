@@ -34,7 +34,7 @@ const fi = {
     { label: 'Esittely', href: '#esittely' },
     { label: 'Kalenteri', href: '#kalenteri' },
     { label: 'Keikoilta', href: '#media' },
-    { label: 'Palautetta keikoilta', href: '#referenssit' },
+    { label: 'Palautetta', href: '#referenssit' },
   ],
 
   hero: {
@@ -52,7 +52,8 @@ const fi = {
   about: {
     title: 'Kuka on Harri Muikkula?',
     paragraphs: [
-      'Harri on jalkansa Helsinkiin betonoinut oululainen koomikko, jonka lavaenergia peittoaa ruuhkavuodet ja kahden pienen lapsen aiheuttamat univelat. Hänen tarinansa koukuttavat ja sitovat yleisön nauru-umpisolmuun – joka toivottavasti aukeaa viimeistään kotimatkalla.',
+      'Olen jalkani Helsinkiin betonoinut oululainen koomikko, jonka lavaenergia peittoaa ruuhkavuodet ja kahden pienen lapsen aiheuttamat univelat. Tarinani koukuttavat ja sitovat yleisön nauru-umpisolmuun – joka toivottavasti aukeaa viimeistään kotimatkalla.',
+      'Olen esiintynyt klubeilla ympäri Suomen Rovaniemeltä Helsinkiin, ja minulla on kokemusta myös kansainvälisistä ympyröistä – olen keikkailut Malesiassa ja Singaporessa.',
     ],
   },
 
@@ -135,7 +136,7 @@ const fi = {
   },
 
   references: {
-    eyebrow: 'Palautetta keikoilta',
+    eyebrow: 'palautetta',
     title: 'Minusta sanottua',
     subtitle: '',
     logos: [],
@@ -191,9 +192,14 @@ const fi = {
     ticketSales: 'Lipunmyynti',
     empty: 'Ei tulevia keikkoja juuri nyt.',
     otherGigs: 'Muut keikat',
+    gigsInMonth: (n) => (n === 1 ? '1 keikka' : `${n} keikkaa`),
+    expandMonth: 'Näytä kuukauden keikat',
+    collapseMonth: 'Piilota kuukauden keikat',
     moreCount: (n) => `+${n} lisää`,
+    configMissing:
+      'Firebase ei ole kytketty tuotantoon. Lisää VITE_FIREBASE_*-muuttujat Netlifyyn ja tee uusi deploy (Clear cache and deploy).',
     syncFailed:
-      'Keikkojen synkronointi ei onnistunut juuri nyt. Tarkista Firestore-oikeudet.',
+      'Keikkojen synkronointi ei onnistunut. Tarkista: Netlify-ympäristömuuttujat, Firebase Authorized domains (netlify.app), anonyymi kirjautuminen päällä ja Firestore-säännöt gigs-kokoelmalle.',
     unplacedGigs:
       'Joitain keikkoja ei voitu sijoittaa kalenteriin — katso listanäkymästä.',
     prevMonth: 'Edellinen kuukausi',

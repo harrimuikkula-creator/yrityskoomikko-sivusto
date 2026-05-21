@@ -34,7 +34,7 @@ const en = {
     { label: 'About', href: '#esittely' },
     { label: 'Calendar', href: '#kalenteri' },
     { label: 'From gigs', href: '#media' },
-    { label: 'Feedback from gigs', href: '#referenssit' },
+    { label: 'Feedback', href: '#referenssit' },
   ],
 
   hero: {
@@ -52,7 +52,8 @@ const en = {
   about: {
     title: 'Who is Harri Muikkula?',
     paragraphs: [
-      'Harri is an Oulu-born comedian who has planted his feet in Helsinki concrete. His stage energy outweighs rush-hour traffic and the sleep debt of two small children. His stories hook the audience into a laughter knot — hopefully one that loosens on the way home.',
+      'From the chilly north of Finland, I bring boundless stage energy that completely wipes out the exhaustion that comes from being a dad of two little boys. Basically, I have enough kids, but not enough time. My addictive stories will draw you in and tie you into a tight knot of laughter—which will hopefully loosen up by the time you\'re heading back home.',
+      'I\'ve performed at clubs across Finland from Rovaniemi to Helsinki, and I also have international experience — I\'ve gigged in Malaysia and Singapore.',
     ],
   },
 
@@ -72,7 +73,7 @@ const en = {
 
   media: {
     eyebrow: 'Media',
-    title: 'News from gigs',
+    title: 'From the gigs',
     subtitle: 'See what my stand-up looks like.',
     longVideosTitle: 'Full-length gig videos',
     shortClipsTitle: 'Short clips',
@@ -135,7 +136,7 @@ const en = {
   },
 
   references: {
-    eyebrow: 'Feedback from gigs',
+    eyebrow: 'Feedback',
     title: 'What people say',
     subtitle: '',
     logos: [],
@@ -191,9 +192,14 @@ const en = {
     ticketSales: 'Ticket sales',
     empty: 'No upcoming gigs at the moment.',
     otherGigs: 'Other gigs',
+    gigsInMonth: (n) => (n === 1 ? '1 gig' : `${n} gigs`),
+    expandMonth: 'Show gigs for this month',
+    collapseMonth: 'Hide gigs for this month',
     moreCount: (n) => `+${n} more`,
+    configMissing:
+      'Firebase is not configured for production. Add VITE_FIREBASE_* variables in Netlify and redeploy (Clear cache and deploy).',
     syncFailed:
-      'Gig sync failed just now. Please check Firestore permissions.',
+      'Gig sync failed. Check: Netlify env vars, Firebase Authorized domains (netlify.app), Anonymous sign-in enabled, and Firestore rules for the gigs collection.',
     unplacedGigs:
       'Some gigs could not be placed on the calendar — see the list view.',
     prevMonth: 'Previous month',
