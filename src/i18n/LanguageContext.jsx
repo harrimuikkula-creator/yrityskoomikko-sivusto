@@ -30,7 +30,7 @@ export function LanguageProvider({ children }) {
     document.title = content.meta.title
     const meta = document.querySelector('meta[name="description"]')
     if (meta) meta.setAttribute('content', content.meta.description)
-  }, [locale, content.meta.title, content.meta.description])
+  }, [locale, content])
 
   function setLocale(next) {
     if (LOCALES[next]) setLocaleState(next)

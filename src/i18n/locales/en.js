@@ -41,7 +41,7 @@ const en = {
     eyebrow: 'Humour and laughter for private and corporate celebrations',
     title: 'Want to make your event funnier?',
     subtitle:
-      'I bring a professional stand-up show to Christmas parties, summer parties, weddings, and customer events. Comedy that is easy and safe to laugh at! I perform in both Finnish and English.',
+      'I bring a professional stand-up show to Company Christmas parties, summer parties, weddings, and customer events. Comedy that is easy and safe to laugh at! I perform in both Finnish and English.',
     ctaPrimary: 'Check availability',
     ctaSecondary: 'View gig calendar',
     imageAlt: 'Comedian on stage at a corporate event',
