@@ -13,6 +13,10 @@ const fi = {
   },
 
   common: {
+    gigInquiryBarAria: 'Keikkakysely',
+    gigInquiryBarTitle: 'Kiinnostuitko keikasta?',
+    gigInquiryBarHint: 'Lähetä kysely sivun alareunan lomakkeella.',
+    gigInquiryCta: 'Lähetä keikkakysely',
     requestQuote: 'Pyydä tarjous',
     openMenu: 'Avaa valikko',
     closeMenu: 'Sulje valikko',

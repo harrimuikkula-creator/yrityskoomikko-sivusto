@@ -31,7 +31,10 @@ export default function ContactForm() {
     'w-full rounded-sm border border-olive-700 bg-olive-900/50 px-4 py-3 text-cream placeholder:text-olive-500 transition-colors focus:border-gold-400/50 focus:outline-none focus:ring-1 focus:ring-gold-400/30'
 
   return (
-    <section id="yhteystiedot" className="section-padding border-t border-olive-800/40">
+    <section
+      id="yhteystiedot"
+      className="scroll-mt-24 section-padding border-t border-olive-800/40"
+    >
       <div className="mx-auto max-w-content">
         <div className="grid gap-12 lg:grid-cols-2 lg:gap-20">
           <div>

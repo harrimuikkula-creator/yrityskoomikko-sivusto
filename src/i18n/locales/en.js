@@ -13,6 +13,10 @@ const en = {
   },
 
   common: {
+    gigInquiryBarAria: 'Gig inquiry',
+    gigInquiryBarTitle: 'Interested in booking a gig?',
+    gigInquiryBarHint: 'Send your inquiry using the form at the bottom of the page.',
+    gigInquiryCta: 'Send gig inquiry',
     requestQuote: 'Request a quote',
     openMenu: 'Open menu',
     closeMenu: 'Close menu',
