@@ -1,0 +1,26 @@
+@import 'tailwindcss';
+@config '../tailwind.config.js';
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-olive-950 font-sans text-cream antialiased;
+  }
+
+  ::selection {
+    @apply bg-gold-400/30 text-cream;
+  }
+}
+
+@layer utilities {
+  .section-padding {
+    @apply px-6 py-20 md:px-10 md:py-28 lg:px-12 lg:py-32;
+  }
+
+  .section-divider {
+    @apply mx-auto h-px max-w-content bg-olive-800/60;
+  }
+}
