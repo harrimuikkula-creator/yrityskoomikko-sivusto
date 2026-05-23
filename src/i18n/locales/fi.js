@@ -69,7 +69,7 @@ const fi = {
       'Yksityis- ja yritystilaisuuksissa stand-up ei saa olla arvailua. Tarvitset esiintyjän, joka osaa lukea yleisön, kunnioittaa brändiäsi ja tuoda tilanteeseen sopivaa, terävää huumoria.',
       'Olen esiintynyt esimerkiksi yritystapahtumissa ja häissä. Jokainen keikka räätälöidään yleisölle ja tilaisuuden tunnelmaan sopivasti.',
       'Voin tuoda esitykseen myös musikaalisen elementin kitaran muodossa. Halutessasi teen kappaleen esimerkiksi yrityksesi vuosikertomuksesta tai vaikkapa synttärisankarista.',
-      'Voin toimia myös tapahtumaasi juontajana (stand-up esityksen kanssa tai ilman). Minulla on kokemusta useammasta yli 300 henkilön tapahtuman juontamisesta',
+      'Voin toimia myös tapahtumaasi juontajana (stand-up esityksen kanssa tai ilman). Minulla on kokemusta useammasta yli 300 henkilön tapahtuman juontamisesta.',
     ],
     stats: [
       { value: '250+', label: 'Keikkaa' },
