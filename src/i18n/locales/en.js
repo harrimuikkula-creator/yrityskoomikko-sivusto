@@ -81,18 +81,9 @@ const en = {
     eyebrow: 'Media',
     title: 'From the gigs',
     subtitle: 'See what my stand-up looks like.',
-    longVideosTitle: 'Full-length gig videos',
     shortClipsTitle: 'Short clips',
     imagesTitle: 'Gig photos',
     addVideoLink: 'Add a YouTube or Vimeo link',
-    longGigVideos: [
-      {
-        id: 'lahden-seurahuone',
-        title: 'Lahti Seurahuone, March 2026',
-        platform: 'youtube',
-        videoId: 'wi223QBiHZA',
-      },
-    ],
     shortClips: [
       {
         id: 'klippi-2',
@@ -163,11 +154,15 @@ const en = {
     subtitle:
       'Tell me about your event — I usually reply within 24 hours about availability and pricing.',
     fields: {
-      name: 'Name',
-      company: 'Company / organisation',
+      name: 'Name (required)',
+      email: 'Email (required)',
+      emailConfirm: 'Confirm email (required)',
+      phone: 'Phone number (required)',
+      company: 'Company (optional)',
       date: 'Preferred date',
-      message: 'Message',
+      message: 'Message (required)',
     },
+    checkEmail: 'Please check your email address',
     messagePlaceholder:
       'Tell me about the event, audience size, and any wishes...',
     submitLabel: 'Send request',

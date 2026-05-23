@@ -163,7 +163,6 @@ function VideoSection({ title, videos, columns = 'two', emptyVideoHint }) {
 export default function MediaGallery() {
   const { content } = useLanguage()
   const { media } = content
-  const longVideos = media.longGigVideos ?? media.videos ?? []
   const shortClips = media.shortClips ?? []
 
   return (
@@ -176,12 +175,6 @@ export default function MediaGallery() {
           className="mb-14"
         />
 
-        <VideoSection
-          title={media.longVideosTitle}
-          videos={longVideos}
-          columns="two"
-          emptyVideoHint={media.addVideoLink}
-        />
         <VideoSection
           title={media.shortClipsTitle}
           videos={shortClips}

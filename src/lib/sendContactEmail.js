@@ -1,4 +1,11 @@
-export async function sendContactEmail({ name, company, date, message }) {
+export async function sendContactEmail({
+  name,
+  email,
+  phone,
+  company,
+  date,
+  message,
+}) {
   const accessKey = import.meta.env.VITE_WEB3FORMS_ACCESS_KEY
   if (!accessKey) {
     throw new Error('WEB3FORMS_NOT_CONFIGURED')
@@ -7,7 +14,9 @@ export async function sendContactEmail({ name, company, date, message }) {
   const preferredDate = date
     ? new Date(date).toLocaleDateString('fi-FI')
     : 'Ei annettu'
-  const subject = `Keikkakysely: ${company} – ${name}`
+  const subject = company
+    ? `Keikkakysely: ${company} – ${name}`
+    : `Keikkakysely – ${name}`
 
   const response = await fetch('https://api.web3forms.com/submit', {
     method: 'POST',
@@ -19,10 +28,12 @@ export async function sendContactEmail({ name, company, date, message }) {
       access_key: accessKey,
       subject,
       from_name: name,
-      Nimi: name,
-      Yritys: company,
-      'Toivottu päivämäärä': preferredDate,
-      Viesti: message,
+      email,
+      name,
+      phone,
+      company: company || '—',
+      preferred_date: preferredDate,
+      message,
     }),
   })
 

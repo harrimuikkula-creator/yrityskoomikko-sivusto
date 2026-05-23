@@ -81,18 +81,9 @@ const fi = {
     eyebrow: 'Media',
     title: 'Kuulumisia keikoilta',
     subtitle: 'Näe millaista Stand-uppia on tarjolla.',
-    longVideosTitle: 'Pitkät keikkavideot',
     shortClipsTitle: 'Lyhyet klipit',
     imagesTitle: 'Keikkakuvia',
     addVideoLink: 'Lisää YouTube- tai Vimeo-linkki',
-    longGigVideos: [
-      {
-        id: 'lahden-seurahuone',
-        title: 'Lahden Seurahuone maaliskuu 2026',
-        platform: 'youtube',
-        videoId: 'wi223QBiHZA',
-      },
-    ],
     shortClips: [
       {
         id: 'klippi-2',
@@ -163,11 +154,15 @@ const fi = {
     subtitle:
       'Kerro tilaisuudestasi — vastaan yleensä 24 tunnin sisällä saatavuudesta ja hinnoittelusta.',
     fields: {
-      name: 'Nimi',
-      company: 'Yritys',
+      name: 'Nimi (pakollinen)',
+      email: 'Sähköposti (pakollinen)',
+      emailConfirm: 'Vahvista sähköposti (pakollinen)',
+      phone: 'Puhelinnumero (pakollinen)',
+      company: 'Yritys (vapaaehtoinen)',
       date: 'Toivottu päivämäärä',
-      message: 'Viesti',
+      message: 'Viesti (pakollinen)',
     },
+    checkEmail: 'Tarkasta sähköpostiosoitteesi',
     messagePlaceholder:
       'Kerro tilaisuudesta, yleisömäärästä ja toiveista...',
     submitLabel: 'Lähetä tarjouspyyntö',
