@@ -183,6 +183,8 @@ const fi = {
     eyebrow: 'Keikkakalenteri',
     title: 'Tulevat keikat',
     subtitle: 'Täällä voit nähdä minut livenä.',
+    disclaimer:
+      'Keikkakalenteri päivittyy automaattisesti. Ajankohtien, paikkojen ja muiden tietojen muutokset ovat mahdollisia — tarkista ajantasainen tieto etenkin ennen lipun ostoa.',
     imageSrc: '/images/calendar-gig.png',
     imageAlt: 'Harri Muikkula esiintymässä lavalla mikrofon kädessä',
     viewList: 'Lista',

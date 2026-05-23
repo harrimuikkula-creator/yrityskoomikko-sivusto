@@ -767,6 +767,12 @@ export default function GigCalendar() {
             />
           )}
         </div>
+
+        {calendar.disclaimer && (
+          <p className="mt-4 max-w-2xl text-xs leading-relaxed text-olive-400 md:text-sm">
+            {calendar.disclaimer}
+          </p>
+        )}
       </div>
     </section>
   )

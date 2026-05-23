@@ -183,6 +183,8 @@ const en = {
     eyebrow: 'Gig calendar',
     title: 'Upcoming gigs',
     subtitle: 'See where you can catch me live.',
+    disclaimer:
+      'The calendar updates automatically. Dates, venues, and other details may change — please check for the latest information before buying tickets.',
     imageSrc: '/images/calendar-gig.png',
     imageAlt: 'Harri Muikkula performing on stage with a microphone',
     viewList: 'List',
