@@ -553,7 +553,7 @@ function GigCalendarView({ upcomingGigs, startOfToday, calendar }) {
               type="button"
               onClick={() => hasGigs && setSelectedDayKey(isSelected ? null : key)}
               disabled={!hasGigs}
-              className={`min-h-[96px] border-b border-r border-olive-800 p-1.5 text-left transition-colors sm:min-h-[112px] sm:p-2 ${
+              className={`min-h-[80px] border-b border-r border-olive-800 p-1.5 text-left transition-colors sm:min-h-[92px] sm:p-2 ${
                 inMonth ? 'bg-olive-950/20' : 'bg-olive-950/60'
               } ${hasGigs ? 'cursor-pointer hover:bg-olive-900/50' : 'cursor-default'} ${
                 isSelected ? 'bg-gold-400/10 ring-1 ring-inset ring-gold-400/40' : ''
@@ -726,11 +726,11 @@ export default function GigCalendar() {
         </div>
 
         {calendar.imageSrc && (
-          <figure className="relative mb-10 overflow-hidden rounded-sm border border-olive-800 bg-olive-900 shadow-xl shadow-black/30 md:mb-12">
+          <figure className="relative mb-8 overflow-hidden rounded-sm border border-olive-800 bg-olive-900 shadow-xl shadow-black/30 md:mb-10">
             <img
               src={calendar.imageSrc}
               alt={calendar.imageAlt}
-              className="aspect-[16/10] w-full object-cover object-[center_35%] sm:aspect-[21/9]"
+              className="h-auto max-h-44 w-full object-cover object-[center_35%] sm:max-h-48 md:max-h-52 lg:max-h-56"
             />
             <div
               className="pointer-events-none absolute inset-0 bg-gradient-to-t from-olive-950/70 via-olive-950/10 to-transparent"
