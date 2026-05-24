@@ -45,7 +45,7 @@ const fi = {
     eyebrow: 'Huumoria ja naurua yksityis- ja yritysjuhliin',
     title: 'Tee juhlistasi hauskemmat!',
     subtitle:
-      'Tuon ammattimaisen stand-up -show\'n pikkujouluihin, kesäpäiviin, häihin tai vaikkapa asiakastilaisuuksiin. Komediaa, jolle on helppo ja turvallista nauraa! Pystyn esiintymään sekä suomeksi, että englanniksi.',
+      'Tuon ammattimaisen stand-up-show\'n pikkujouluihin, kesäpäiviin, häihin tai vaikkapa asiakastilaisuuksiin. Komediaa, jolle on helppo ja turvallista nauraa! Pystyn esiintymään sekä suomeksi että englanniksi.',
     ctaPrimary: 'Tarkista saatavuus',
     ctaSecondary: 'Katso keikkakalenteri',
     imageAlt: 'Harri Muikkula promokuvassa',
@@ -64,12 +64,12 @@ const fi = {
   },
 
   intro: {
-    title: 'Huumoria joka toimii joka tilaisuudessa.',
+    title: 'Huumoria, joka toimii joka tilaisuudessa.',
     paragraphs: [
       'Tärkeässä tilaisuudessasi stand-up ei saa olla arvailua. Esiintyjän tulee osata lukea yleisöä, kunnioittaa tapahtumaasi ja tuoda tilanteeseen sopivaa, terävää huumoria.',
-      'Minulle on tuttua esiintyminen vaikkapa yritystapahtumissa ja häissä. Jokainen keikka räätälöidään yleisölle ja tilaisuuden tunnelmaan sopivasti.',
+      'Minulle on tuttua esiintyä vaikkapa yritystapahtumissa ja häissä. Jokainen keikka räätälöidään yleisölle ja tilaisuuden tunnelmaan sopivasti.',
       'Voin tuoda esitykseen myös musikaalisen elementin kitaran muodossa. Halutessasi teen kappaleen esimerkiksi yrityksesi vuosikertomuksesta tai vaikkapa synttärisankarista.',
-      'Minulta onnistuu myös tapahtumasi juontajaminen (stand-up esityksen kanssa tai ilman). Minulla on kokemusta useammasta yli 300 henkilön tapahtuman juontamisesta.',
+      'Voin toimia myös tapahtumasi juontajana (stand-up-esityksen kanssa tai ilman). Minulla on kokemusta useista yli 300 hengen tapahtuman juontamisesta.',
     ],
     stats: [
       { value: '250+', label: 'Keikkaa' },
@@ -80,7 +80,7 @@ const fi = {
   media: {
     eyebrow: 'Media',
     title: 'Kuulumisia keikoilta',
-    subtitle: 'Näe millaista Stand-uppia on tarjolla.',
+    subtitle: 'Näe, millaista stand-upia on tarjolla.',
     shortClipsTitle: 'Lyhyet klipit',
     imagesTitle: 'Keikkakuvia',
     addVideoLink: 'Lisää YouTube- tai Vimeo-linkki',
@@ -99,7 +99,7 @@ const fi = {
       },
       {
         id: 'klippi-4',
-        title: 'Maalainen muuttamassa Helsinkiin',
+        title: 'Maaseutulainen muuttamassa Helsinkiin',
         platform: 'youtube',
         videoId: 'https://youtube.com/shorts/02A_5OmVSVI',
       },
@@ -133,7 +133,7 @@ const fi = {
   },
 
   references: {
-    eyebrow: 'palautetta',
+    eyebrow: 'Palautetta',
     title: 'Minusta sanottua',
     subtitle: '',
     logos: [],
@@ -162,12 +162,12 @@ const fi = {
       date: 'Toivottu päivämäärä',
       message: 'Viesti (pakollinen)',
     },
-    checkEmail: 'Tarkasta sähköpostiosoitteesi',
+    checkEmail: 'Tarkista sähköpostiosoitteesi',
     messagePlaceholder:
       'Kerro tilaisuudesta, yleisömäärästä ja toiveista...',
     submitLabel: 'Lähetä tarjouspyyntö',
     submittingLabel: 'Lähetetään...',
-    successMessage: 'Kiitos viestistä! Otamme yhteyttä pian.',
+    successMessage: 'Kiitos viestistä! Otan yhteyttä pian.',
     errorMessage:
       'Viestin lähetys epäonnistui. Yritä uudelleen tai ota yhteyttä sähköpostilla.',
     configErrorMessage:
@@ -181,7 +181,7 @@ const fi = {
     disclaimer:
       'Keikkakalenteri päivittyy automaattisesti. Ajankohtien, paikkojen ja muiden tietojen muutokset ovat mahdollisia — tarkista ajantasainen tieto etenkin ennen lipun ostoa.',
     imageSrc: '/images/calendar-gig.png',
-    imageAlt: 'Harri Muikkula esiintymässä lavalla mikrofon kädessä',
+    imageAlt: 'Harri Muikkula esiintymässä lavalla mikrofoni kädessä',
     viewList: 'Lista',
     viewCalendar: 'Kalenteri',
     viewAriaLabel: 'Keikkojen näkymä',

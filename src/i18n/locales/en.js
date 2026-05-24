@@ -48,7 +48,7 @@ const en = {
       'I bring a professional stand-up show to Company Christmas parties, summer parties, weddings, and customer events. Comedy that is easy and safe to laugh at! I perform in both Finnish and English.',
     ctaPrimary: 'Check availability',
     ctaSecondary: 'View gig calendar',
-    imageAlt: 'Harri Muikkula promokuvassa',
+    imageAlt: 'Harri Muikkula in a promo photo',
     imageSrc: '/images/promo-hero.png',
     photoCredit: 'Janne Oravisto',
   },
@@ -167,7 +167,7 @@ const en = {
       'Tell me about the event, audience size, and any wishes...',
     submitLabel: 'Send request',
     submittingLabel: 'Sending...',
-    successMessage: 'Thank you for your message! We will be in touch soon.',
+    successMessage: 'Thank you for your message! I will be in touch soon.',
     errorMessage:
       'Sending failed. Please try again or contact us by email.',
     configErrorMessage:
