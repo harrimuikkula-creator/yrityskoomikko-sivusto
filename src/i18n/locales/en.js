@@ -48,8 +48,8 @@ const en = {
       'I bring a professional stand-up show to Company Christmas parties, summer parties, weddings, and customer events. Comedy that is easy and safe to laugh at! I perform in both Finnish and English.',
     ctaPrimary: 'Check availability',
     ctaSecondary: 'View gig calendar',
-    imageAlt: 'Comedian on stage at a corporate event',
-    imageSrc: '/images/promo-2.png',
+    imageAlt: 'Harri Muikkula promokuvassa',
+    imageSrc: '/images/promo-hero.png',
     photoCredit: 'Janne Oravisto',
   },
 
@@ -66,9 +66,9 @@ const en = {
   intro: {
     title: 'Humour that works in every setting.',
     paragraphs: [
-      'At private and corporate events, stand-up cannot be guesswork. You need a performer who can read the room, respect your brand, and bring sharp humour suited to the occasion.',
-      'I have performed at corporate events and weddings, among others. Every gig is tailored to the audience and the mood of the occasion.',
-      'I can also add a musical element with guitar. If you wish, I can write a song about your company’s year in review or the birthday guest of honour.',
+      'At an important event, stand-up cannot be guesswork. The performer must be able to read the audience, respect your occasion, and bring sharp humour suited to the moment.',
+      'I am used to performing at corporate events, weddings, and similar occasions. Every gig is tailored to the audience and the mood of the event.',
+      'I can also add a musical element with guitar. If you wish, I can write a song—for example about your company’s year in review or the birthday guest of honour.',
       'I can also host your event (with or without a stand-up set). I have experience hosting several events with over 300 guests.',
     ],
     stats: [

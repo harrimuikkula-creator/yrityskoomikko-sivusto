@@ -20,7 +20,7 @@ export default function LanguageSwitcher({ className = '' }) {
             aria-pressed={isActive}
             className={`min-w-[2.75rem] rounded-sm px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
               isActive
-                ? 'bg-gold-400/20 text-gold-300'
+                ? 'bg-gold-400 text-olive-950'
                 : 'text-cream-muted hover:text-cream'
             }`}
           >

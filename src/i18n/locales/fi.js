@@ -48,8 +48,8 @@ const fi = {
       'Tuon ammattimaisen stand-up -show\'n pikkujouluihin, kesäpäiviin, häihin tai vaikkapa asiakastilaisuuksiin. Komediaa, jolle on helppo ja turvallista nauraa! Pystyn esiintymään sekä suomeksi, että englanniksi.',
     ctaPrimary: 'Tarkista saatavuus',
     ctaSecondary: 'Katso keikkakalenteri',
-    imageAlt: 'Koomikko lavalla yritystilaisuudessa',
-    imageSrc: '/images/promo-2.png',
+    imageAlt: 'Harri Muikkula promokuvassa',
+    imageSrc: '/images/promo-hero.png',
     photoCredit: 'Janne Oravisto',
   },
 
@@ -66,10 +66,10 @@ const fi = {
   intro: {
     title: 'Huumoria joka toimii joka tilaisuudessa.',
     paragraphs: [
-      'Yksityis- ja yritystilaisuuksissa stand-up ei saa olla arvailua. Tarvitset esiintyjän, joka osaa lukea yleisön, kunnioittaa brändiäsi ja tuoda tilanteeseen sopivaa, terävää huumoria.',
-      'Olen esiintynyt esimerkiksi yritystapahtumissa ja häissä. Jokainen keikka räätälöidään yleisölle ja tilaisuuden tunnelmaan sopivasti.',
+      'Tärkeässä tilaisuudessasi stand-up ei saa olla arvailua. Esiintyjän tulee osata lukea yleisöä, kunnioittaa tapahtumaasi ja tuoda tilanteeseen sopivaa, terävää huumoria.',
+      'Minulle on tuttua esiintyminen vaikkapa yritystapahtumissa ja häissä. Jokainen keikka räätälöidään yleisölle ja tilaisuuden tunnelmaan sopivasti.',
       'Voin tuoda esitykseen myös musikaalisen elementin kitaran muodossa. Halutessasi teen kappaleen esimerkiksi yrityksesi vuosikertomuksesta tai vaikkapa synttärisankarista.',
-      'Voin toimia myös tapahtumaasi juontajana (stand-up esityksen kanssa tai ilman). Minulla on kokemusta useammasta yli 300 henkilön tapahtuman juontamisesta.',
+      'Minulta onnistuu myös tapahtumasi juontajaminen (stand-up esityksen kanssa tai ilman). Minulla on kokemusta useammasta yli 300 henkilön tapahtuman juontamisesta.',
     ],
     stats: [
       { value: '250+', label: 'Keikkaa' },

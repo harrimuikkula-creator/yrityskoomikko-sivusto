@@ -730,7 +730,7 @@ export default function GigCalendar() {
             <img
               src={calendar.imageSrc}
               alt={calendar.imageAlt}
-              className="h-auto max-h-44 w-full object-cover object-[center_35%] sm:max-h-48 md:max-h-52 lg:max-h-56"
+              className="h-auto max-h-64 w-full object-cover object-[center_35%] sm:max-h-72 md:max-h-80 lg:max-h-96"
             />
             <div
               className="pointer-events-none absolute inset-0 bg-gradient-to-t from-olive-950/70 via-olive-950/10 to-transparent"

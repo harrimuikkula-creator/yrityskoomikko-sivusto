@@ -1,6 +1,10 @@
 import { useLanguage } from '../i18n/LanguageContext'
 import Button from './ui/Button'
 
+/** Kuvasarakkeen korkeus (header + alapalkki vähennettynä) */
+const imageHeight =
+  'min-h-[min(54vh,520px)] lg:h-[calc(100dvh-5.25rem-4.5rem)] lg:min-h-[600px]'
+
 export default function Hero() {
   const { content } = useLanguage()
   const { hero, common } = content
@@ -8,62 +12,50 @@ export default function Hero() {
   return (
     <section
       id="hero"
-      className="section-padding relative overflow-hidden pt-32 md:pt-40"
+      className="bg-white pt-[4.75rem] md:pt-[5.25rem]"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(201,169,98,0.08)_0%,_transparent_50%)]" />
-      <div className="pointer-events-none absolute -left-32 top-1/4 h-96 w-96 rounded-full bg-olive-800/20 blur-3xl" />
-
-      <div className="relative mx-auto grid max-w-content items-center gap-12 lg:grid-cols-2 lg:gap-16">
-        <div>
-          <p className="mb-6 text-xs font-semibold uppercase tracking-[0.25em] text-gold-400">
+      <div className="mx-auto grid max-w-content grid-cols-1 px-6 md:px-10 lg:grid-cols-[minmax(0,38%)_minmax(0,62%)] lg:items-stretch lg:gap-12 lg:px-12">
+        <div className="relative z-20 flex flex-col justify-center bg-white py-10 lg:py-12 lg:pr-4">
+          <p className="mb-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-gold-600 sm:text-xs">
             {hero.eyebrow}
           </p>
-          <h1 className="text-4xl font-extrabold leading-[1.08] tracking-tightest text-cream sm:text-5xl lg:text-6xl">
+          <h1 className="text-[2rem] font-extrabold leading-[1.08] tracking-tightest text-olive-950 sm:text-5xl lg:text-[3.25rem] lg:leading-[1.06]">
             {hero.title}
           </h1>
-          <p className="mt-6 max-w-xl text-base leading-relaxed text-cream-muted md:text-lg">
+          <p className="mt-5 max-w-xl text-base leading-relaxed text-olive-800 md:text-[1.0625rem] md:leading-relaxed">
             {hero.subtitle}
           </p>
-          <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
             <Button href="#yhteystiedot" size="lg">
               {hero.ctaPrimary}
             </Button>
-            <Button href="#kalenteri" variant="secondary" size="lg">
+            <Button
+              href="#kalenteri"
+              variant="secondary"
+              size="lg"
+              className="border-olive-950/25 bg-white text-olive-950 hover:border-gold-600 hover:bg-white hover:text-gold-800 focus-visible:ring-gold-500/40 focus-visible:ring-offset-white"
+            >
               {hero.ctaSecondary}
             </Button>
           </div>
         </div>
 
-        <div className="flex justify-center lg:justify-end">
+        <div className={`relative isolate overflow-hidden ${imageHeight}`}>
           {hero.imageSrc ? (
-            <div className="aspect-[2/3] w-full max-w-[240px] overflow-hidden sm:max-w-[280px] lg:max-h-[min(calc(100vh-11rem),500px)] lg:max-w-[320px]">
+            <div className="flex h-full w-full items-end justify-center">
               <img
                 src={hero.imageSrc}
                 alt={hero.imageAlt}
-                className="h-full w-full object-cover object-[50%_14%]"
+                className="h-full w-auto max-w-none object-contain object-bottom"
+                decoding="async"
               />
             </div>
           ) : (
-            <div className="flex aspect-[2/3] w-full max-w-sm flex-col items-center justify-center bg-gradient-to-br from-olive-900 via-olive-800 to-olive-950 p-8 text-center">
-              <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full border border-gold-400/30 bg-gold-400/10">
-                <svg
-                  className="h-10 w-10 text-gold-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"
-                  />
-                </svg>
-              </div>
-              <p className="text-sm font-medium uppercase tracking-widest text-gold-400/80">
+            <div className="flex h-full min-h-[280px] flex-col items-center justify-center rounded-sm border border-olive-200 p-8 text-center">
+              <p className="text-sm font-medium uppercase tracking-widest text-gold-700">
                 {common.promoImage}
               </p>
-              <p className="mt-2 max-w-xs text-sm text-cream-muted">
+              <p className="mt-2 max-w-xs text-sm text-olive-600">
                 {common.promoImageHint}
               </p>
             </div>

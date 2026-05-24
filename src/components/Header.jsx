@@ -9,7 +9,7 @@ export default function Header() {
   const { brand, navLinks, common } = content
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 border-b border-olive-800/50 bg-olive-950/90 backdrop-blur-md">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-olive-800/60 bg-olive-950">
       <div className="mx-auto flex max-w-content items-center justify-between px-6 py-4 md:px-10 lg:px-12">
         <a
           href="#hero"
