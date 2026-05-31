@@ -103,6 +103,12 @@ const fi = {
         platform: 'youtube',
         videoId: 'https://youtube.com/shorts/02A_5OmVSVI',
       },
+      {
+        id: 'klippi-5',
+        title: 'Väärinkäsitys(kö)?',
+        platform: 'youtube',
+        videoId: 'https://youtube.com/shorts/DuU4u8EAYJg',
+      },
     ],
     images: [
       {
