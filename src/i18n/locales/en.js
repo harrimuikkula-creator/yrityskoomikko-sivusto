@@ -60,7 +60,12 @@ const en = {
     paragraphs: [
       'From the chilly north of Finland, I bring boundless stage energy that completely wipes out the exhaustion that comes from being a dad of two little boys. Basically, I have enough kids, but not enough time. My addictive stories will draw you in and tie you into a tight knot of laughter—which will hopefully loosen up by the time you\'re heading back home.',
       'I\'ve performed at clubs across Finland from Rovaniemi to Helsinki, and I also have international experience — I\'ve gigged in Malaysia and Singapore.',
+      'I have been selected to perform in the prestigious Vuoden Tulokas (Newcomer of the Year) competition organised by the Finnish Stand Up Club.',
     ],
+    highlightImage: {
+      src: '/images/vuoden-tulokas-2026.png',
+      alt: 'Promotional image of Harri Muikkula for the Vuoden Stand Up Tulokas 2026 competition',
+    },
   },
 
   intro: {

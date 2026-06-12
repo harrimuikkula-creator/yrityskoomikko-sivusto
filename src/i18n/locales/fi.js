@@ -60,7 +60,12 @@ const fi = {
     paragraphs: [
       'Olen jalkani Helsinkiin betonoinut oululainen koomikko, jonka lavaenergia peittoaa ruuhkavuodet ja kahden pienen lapsen aiheuttamat univelat. Tarinani koukuttavat ja sitovat yleisön nauru-umpisolmuun – joka toivottavasti aukeaa viimeistään kotimatkalla.',
       'Olen esiintynyt klubeilla ympäri Suomen Rovaniemeltä Helsinkiin, ja minulla on kokemusta myös kansainvälisistä ympyröistä – olen keikkailut Malesiassa ja Singaporessa.',
+      'Minut on valittu esiintymään arvostettuun Suomen Stand Up Clubin järjestämään Vuoden Tulokas -kisaan.',
     ],
+    highlightImage: {
+      src: '/images/vuoden-tulokas-2026.png',
+      alt: 'Harri Muikkula Vuoden Stand Up Tulokas 2026 -kilpailun promokuva',
+    },
   },
 
   intro: {

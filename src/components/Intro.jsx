@@ -1,5 +1,22 @@
 import { useLanguage } from '../i18n/LanguageContext'
 
+const aboutImageWidth =
+  'w-full max-w-[13.5rem] lg:w-[13.5rem] lg:max-w-none xl:w-[15rem]'
+
+function AboutImageFrame({ src, alt, objectPosition = 'center' }) {
+  return (
+    <div
+      className={`aspect-[4/5] overflow-hidden rounded-sm border border-olive-800 bg-olive-900 ${aboutImageWidth}`}
+    >
+      <img
+        src={src}
+        alt={alt}
+        className={`h-full w-full object-cover ${objectPosition}`}
+      />
+    </div>
+  )
+}
+
 export default function Intro() {
   const { content } = useLanguage()
   const { about, intro } = content
@@ -7,7 +24,7 @@ export default function Intro() {
   return (
     <section
       id="esittely"
-      className="section-padding border-t border-olive-800/40"
+      className="border-t border-olive-800/40 px-6 pt-16 pb-12 md:px-10 md:pt-20 md:pb-14 lg:px-12 lg:pt-24 lg:pb-16"
     >
       <div className="mx-auto max-w-content">
         <div className="grid gap-12 lg:grid-cols-[1fr_1.2fr] lg:gap-20">
@@ -38,42 +55,50 @@ export default function Intro() {
           </div>
         </div>
 
-        <div className="section-divider my-16 md:my-20" />
+        <div className="section-divider my-12 md:my-14" />
 
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,17rem)_1fr] lg:items-start lg:gap-16">
+        <div className="grid items-start gap-8 lg:grid-cols-[13.5rem_minmax(0,1fr)_13.5rem] lg:gap-10 xl:grid-cols-[15rem_minmax(0,1fr)_15rem] xl:gap-12">
           {about.imageSrc && (
-            <figure className="relative mx-auto w-full max-w-xs lg:mx-0 lg:max-w-none">
-              <div className="overflow-hidden rounded-sm border border-olive-800 bg-olive-900 shadow-2xl shadow-black/40">
-                <img
-                  src={about.imageSrc}
-                  alt={about.imageAlt}
-                  className="aspect-[4/5] w-full object-cover object-[center_12%]"
-                />
-              </div>
+            <figure className={`relative mx-auto lg:mx-0 ${aboutImageWidth}`}>
+              <AboutImageFrame
+                src={about.imageSrc}
+                alt={about.imageAlt}
+                objectPosition="object-[center_12%]"
+              />
               <div
-                className="pointer-events-none absolute -bottom-3 -right-3 hidden h-16 w-16 border border-gold-400/25 md:block"
+                className="pointer-events-none absolute -bottom-3 -right-3 hidden h-12 w-12 border border-gold-400/25 md:block"
                 aria-hidden
               />
               <div
-                className="pointer-events-none absolute -left-2 -top-2 hidden h-10 w-10 bg-gold-400/10 md:block"
+                className="pointer-events-none absolute -left-2 -top-2 hidden h-8 w-8 bg-gold-400/10 md:block"
                 aria-hidden
               />
             </figure>
           )}
 
-          <div>
-            <h2 className="mb-8 text-3xl font-bold leading-tight tracking-tightest text-cream md:text-4xl lg:mb-10">
+          <div className="min-w-0">
+            <h2 className="mb-6 text-3xl font-bold leading-tight tracking-tightest text-cream md:mb-8 md:text-4xl">
               {about.title}
             </h2>
             {about.paragraphs.map((paragraph) => (
               <p
                 key={paragraph.slice(0, 30)}
-                className="mb-6 text-base leading-relaxed text-cream-muted last:mb-0 md:text-lg"
+                className="mb-5 text-base leading-relaxed text-cream-muted last:mb-0 md:text-lg"
               >
                 {paragraph}
               </p>
             ))}
           </div>
+
+          {about.highlightImage && (
+            <figure className={`mx-auto shrink-0 lg:mx-0 lg:justify-self-end ${aboutImageWidth}`}>
+              <AboutImageFrame
+                src={about.highlightImage.src}
+                alt={about.highlightImage.alt}
+                objectPosition="object-center"
+              />
+            </figure>
+          )}
         </div>
       </div>
     </section>

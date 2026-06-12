@@ -109,6 +109,25 @@ function formatVenueName(venue, clubName) {
   return v || c || '-'
 }
 
+const FINLAND_COUNTRY_ALIASES = new Set(['finland', 'suomi', 'fi', 'fin'])
+
+function formatCity(rawCity) {
+  const trimmed = String(rawCity ?? '').trim()
+  if (!trimmed || trimmed === '-') return '-'
+
+  const parts = trimmed.split(',').map((part) => part.trim()).filter(Boolean)
+  if (parts.length === 1) return parts[0]
+
+  const [city, ...countryParts] = parts
+  const country = countryParts.join(', ')
+
+  if (FINLAND_COUNTRY_ALIASES.has(country.toLowerCase())) {
+    return city
+  }
+
+  return `${city}, ${country}`
+}
+
 function buildGigDisplayFields({
   eventType: rawEventType,
   festivalName: rawFestivalName,
@@ -121,7 +140,7 @@ function buildGigDisplayFields({
   const eventType = rawEventType === 'private' ? 'private' : 'public'
   const isPrivate = eventType === 'private'
   const festivalName = String(rawFestivalName ?? '').trim() || null
-  const city = rawCity?.trim() || '-'
+  const city = formatCity(rawCity)
   const venueName = formatVenueName(venue, clubName)
 
   let displayPlace = venueName
