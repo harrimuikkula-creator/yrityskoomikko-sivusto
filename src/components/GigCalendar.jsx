@@ -806,9 +806,19 @@ export default function GigCalendar() {
       if (GIG_OWNER_UID) {
         constraints.push(where('ownerId', '==', GIG_OWNER_UID))
       }
-      constraints.push(orderBy('date', 'asc'))
-      const gigsQuery = query(collection(db, 'gigs'), ...constraints)
-      const snapshot = await getDocs(gigsQuery)
+      let snapshot
+      try {
+        const gigsQuery = query(collection(db, 'gigs'), ...constraints, orderBy('date', 'asc'))
+        snapshot = await getDocs(gigsQuery)
+      } catch (error) {
+        if (error?.code !== 'failed-precondition') {
+          throw error
+        }
+        console.warn('Missing gigs index for ownerId+date. Falling back to unordered query.')
+        const fallbackQuery = query(collection(db, 'gigs'), ...constraints)
+        snapshot = await getDocs(fallbackQuery)
+      }
+
       const normalizedGigs = snapshot.docs.map((doc) =>
         normalizeFirestoreGig(doc, calendar.dateLocale, calendar.private),
       )
