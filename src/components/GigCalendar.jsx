@@ -8,7 +8,9 @@ const GIG_CACHE_KEY = 'gigCalendar:lastSuccessfulSnapshot:v1'
 const GIG_SYNC_ALERT_KEY = 'gigCalendar:lastSyncAlertAt'
 const GIG_SYNC_ALERT_COOLDOWN_MS = 6 * 60 * 60 * 1000
 const GIG_SYNC_ALERT_WEBHOOK_URL = import.meta.env.VITE_GIG_SYNC_ALERT_WEBHOOK_URL
+const GIG_SYNC_ALERT_MENTION = (import.meta.env.VITE_GIG_SYNC_ALERT_MENTION || '').trim()
 const GIG_OWNER_UID = (import.meta.env.VITE_FIREBASE_OWNER_UID || '').trim()
+const SIMULATE_GIG_SYNC_FAILURE = import.meta.env.VITE_SIMULATE_GIG_SYNC_FAILURE === '1'
 
 function getMonthFormatter(dateLocale) {
   return new Intl.DateTimeFormat(dateLocale, {
@@ -290,14 +292,32 @@ async function alertGigSyncFailure({ primaryError, retryError }) {
       return
     }
 
+    const primaryErrorText = String(primaryError?.message ?? primaryError ?? 'unknown')
+    const retryErrorText = String(retryError?.message ?? retryError ?? 'none')
+    const timestamp = new Date(now).toISOString()
+    const mentionPrefix = GIG_SYNC_ALERT_MENTION ? `${GIG_SYNC_ALERT_MENTION} ` : ''
     const payload = {
-      text: `Gig sync failed on ${window.location.hostname}`,
-      source: 'gig-calendar',
-      hostname: window.location.hostname,
-      pageUrl: window.location.href,
-      timestamp: new Date(now).toISOString(),
-      primaryError: String(primaryError?.message ?? primaryError ?? 'unknown'),
-      retryError: String(retryError?.message ?? retryError ?? 'unknown'),
+      username: 'Gig Calendar Monitor',
+      avatar_url: 'https://cdn-icons-png.flaticon.com/512/3652/3652191.png',
+      content: `${mentionPrefix}🚨 Keikkasynkronointi epäonnistui`,
+      allowed_mentions: {
+        parse: ['users', 'roles', 'everyone'],
+      },
+      embeds: [
+        {
+          title: 'Gig sync failure detected',
+          color: 15158332,
+          fields: [
+            { name: 'Host', value: window.location.hostname || 'unknown', inline: true },
+            { name: 'Time', value: timestamp, inline: true },
+            { name: 'Page', value: window.location.href || '-', inline: false },
+            { name: 'Primary error', value: `\`${primaryErrorText.slice(0, 1000)}\``, inline: false },
+            { name: 'Retry error', value: `\`${retryErrorText.slice(0, 1000)}\``, inline: false },
+          ],
+          footer: { text: 'yrityskoomikko-sivusto • gig-calendar' },
+          timestamp,
+        },
+      ],
     }
 
     const response = await fetch(GIG_SYNC_ALERT_WEBHOOK_URL, {
@@ -801,6 +821,9 @@ export default function GigCalendar() {
 
   useEffect(() => {
     const fetchFirestoreGigs = async () => {
+      if (SIMULATE_GIG_SYNC_FAILURE) {
+        throw new Error('Simulated gig sync failure (VITE_SIMULATE_GIG_SYNC_FAILURE=1)')
+      }
       const constraints = []
       if (GIG_OWNER_UID) {
         constraints.push(where('ownerId', '==', GIG_OWNER_UID))

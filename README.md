@@ -66,9 +66,19 @@ Jos API-avaimella on referrer-rajoituksia Google Cloudissa, lisää myös `*.net
 
 ```
 VITE_GIG_SYNC_ALERT_WEBHOOK_URL=https://your-webhook-url
+VITE_GIG_SYNC_ALERT_MENTION=<@123456789012345678>
 ```
 
-Webhookiin lähetetään JSON-POST, kun synkronointi epäonnistuu (cooldown 6h / selain), jotta et saa spämmiä.
+Webhookiin lähetetään Discordiin suoraan sopiva `content + embeds` payload, kun synkronointi epäonnistuu (cooldown 6h / selain), jotta et saa spämmiä.
+`VITE_GIG_SYNC_ALERT_MENTION` on valinnainen. Voit käyttää esim. `<@userId>`, `<@&roleId>`, `@here` tai `@everyone`.
+
+Testausta varten voit simuloida virheen:
+
+```
+VITE_SIMULATE_GIG_SYNC_FAILURE=1
+```
+
+Muista palauttaa arvoon `0` testin jälkeen.
 
 ## GitHub
 
