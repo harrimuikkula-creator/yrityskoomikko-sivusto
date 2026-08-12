@@ -8,10 +8,7 @@ const GIG_CACHE_KEY = 'gigCalendar:lastSuccessfulSnapshot:v1'
 const GIG_SYNC_ALERT_KEY = 'gigCalendar:lastSyncAlertAt'
 const GIG_SYNC_ALERT_COOLDOWN_MS = 6 * 60 * 60 * 1000
 const GIG_SYNC_ALERT_WEBHOOK_URL = import.meta.env.VITE_GIG_SYNC_ALERT_WEBHOOK_URL
-const GIG_OWNER_UID = (
-  import.meta.env.VITE_FIREBASE_OWNER_UID ||
-  'IE4axMIEIxMDr2wnxNygKnks4DQ2'
-).trim()
+const GIG_OWNER_UID = (import.meta.env.VITE_FIREBASE_OWNER_UID || '').trim()
 
 function getMonthFormatter(dateLocale) {
   return new Intl.DateTimeFormat(dateLocale, {
