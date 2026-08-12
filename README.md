@@ -56,6 +56,19 @@ match /gigs/{gigId} {
 
 Jos API-avaimella on referrer-rajoituksia Google Cloudissa, lisää myös `*.netlify.app`.
 
+### Keikkojen vikansieto ja hälytys
+
+- Kalenteri tallentaa selaimen `localStorage`en viimeisimmän onnistuneen keikkadatan.
+- Jos Firestore-synkronointi epäonnistuu myöhemmin, sivu näyttää automaattisesti tämän viimeisimmän toimineen datan.
+- Tuotannossa käyttäjälle ei näytetä Firebase/synkronointi-virhebannereita (varoitukset näkyvät vain dev-tilassa).
+- Voit ottaa omistajahälytyksen käyttöön lisäämällä ympäristömuuttujan:
+
+```
+VITE_GIG_SYNC_ALERT_WEBHOOK_URL=https://your-webhook-url
+```
+
+Webhookiin lähetetään JSON-POST, kun synkronointi epäonnistuu (cooldown 6h / selain), jotta et saa spämmiä.
+
 ## GitHub
 
 https://github.com/harrimuikkula-creator/yrityskoomikko-sivusto

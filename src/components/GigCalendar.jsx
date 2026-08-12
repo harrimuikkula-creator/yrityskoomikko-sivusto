@@ -4,6 +4,11 @@ import { useLanguage } from '../i18n/LanguageContext'
 import { db, ensureFirebaseSession, isFirebaseConfigured } from '../lib/firebase'
 import SectionHeading from './ui/SectionHeading'
 
+const GIG_CACHE_KEY = 'gigCalendar:lastSuccessfulSnapshot:v1'
+const GIG_SYNC_ALERT_KEY = 'gigCalendar:lastSyncAlertAt'
+const GIG_SYNC_ALERT_COOLDOWN_MS = 6 * 60 * 60 * 1000
+const GIG_SYNC_ALERT_WEBHOOK_URL = import.meta.env.VITE_GIG_SYNC_ALERT_WEBHOOK_URL
+
 function getMonthFormatter(dateLocale) {
   return new Intl.DateTimeFormat(dateLocale, {
     month: 'long',
@@ -203,6 +208,96 @@ function normalizeFirestoreGig(doc, dateLocale, privateLabel) {
       ticketUrl: data.ticketUrl,
       privateLabel,
     }),
+  }
+}
+
+function normalizeCachedGig(gig, dateLocale, privateLabel) {
+  return {
+    id: gig.id,
+    date: formatDate(gig.date, dateLocale),
+    parsedDate: parseGigDate(gig.date),
+    ...buildGigDisplayFields({
+      eventType: gig.eventType,
+      festivalName: gig.festivalName,
+      venue: gig.venue,
+      clubName: gig.clubName,
+      city: gig.city,
+      ticketUrl: gig.ticketUrl,
+      privateLabel,
+    }),
+  }
+}
+
+function readCachedGigs(dateLocale, privateLabel) {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = window.localStorage.getItem(GIG_CACHE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.map((gig) => normalizeCachedGig(gig, dateLocale, privateLabel))
+  } catch (error) {
+    console.warn('Failed to read cached gigs snapshot.', error)
+    return []
+  }
+}
+
+function writeCachedGigs(docs) {
+  if (typeof window === 'undefined') return
+  try {
+    const serializable = docs.map((doc) => {
+      const data = doc.data()
+      let cacheDate = data.date
+      if (typeof data.date?.toDate === 'function') {
+        cacheDate = data.date.toDate().toISOString()
+      }
+      return {
+        id: doc.id,
+        date: cacheDate,
+        eventType: data.eventType ?? 'public',
+        festivalName: data.festivalName ?? '',
+        venue: data.venue ?? '',
+        clubName: data.clubName ?? '',
+        city: data.city ?? '',
+        ticketUrl: data.ticketUrl ?? '',
+      }
+    })
+    window.localStorage.setItem(GIG_CACHE_KEY, JSON.stringify(serializable))
+  } catch (error) {
+    console.warn('Failed to write cached gigs snapshot.', error)
+  }
+}
+
+async function alertGigSyncFailure({ primaryError, retryError }) {
+  if (!GIG_SYNC_ALERT_WEBHOOK_URL || typeof window === 'undefined') return
+  try {
+    const lastAlertAt = Number(window.localStorage.getItem(GIG_SYNC_ALERT_KEY) ?? 0)
+    const now = Date.now()
+    if (Number.isFinite(lastAlertAt) && now - lastAlertAt < GIG_SYNC_ALERT_COOLDOWN_MS) {
+      return
+    }
+
+    const payload = {
+      text: `Gig sync failed on ${window.location.hostname}`,
+      source: 'gig-calendar',
+      hostname: window.location.hostname,
+      pageUrl: window.location.href,
+      timestamp: new Date(now).toISOString(),
+      primaryError: String(primaryError?.message ?? primaryError ?? 'unknown'),
+      retryError: String(retryError?.message ?? retryError ?? 'unknown'),
+    }
+
+    const response = await fetch(GIG_SYNC_ALERT_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (!response.ok) {
+      throw new Error(`Webhook failed with status ${response.status}`)
+    }
+    window.localStorage.setItem(GIG_SYNC_ALERT_KEY, String(now))
+  } catch (error) {
+    console.warn('Gig sync alert webhook failed.', error)
   }
 }
 
@@ -647,6 +742,7 @@ export default function GigCalendar() {
   const [syncFailed, setSyncFailed] = useState(false)
   const [configMissing, setConfigMissing] = useState(!isFirebaseConfigured)
   const [view, setView] = useState('list')
+  const showRuntimeWarnings = import.meta.env.DEV
 
   const today = new Date()
   const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
@@ -695,6 +791,7 @@ export default function GigCalendar() {
     const fetchFirestoreGigs = async () => {
       const gigsQuery = query(collection(db, 'gigs'), orderBy('date', 'asc'))
       const snapshot = await getDocs(gigsQuery)
+      writeCachedGigs(snapshot.docs)
       return snapshot.docs.map((doc) =>
         normalizeFirestoreGig(doc, calendar.dateLocale, calendar.private),
       )
@@ -720,8 +817,13 @@ export default function GigCalendar() {
           setGigs(fetchedGigs)
           setSyncFailed(false)
         } catch (authError) {
+          const cachedGigs = readCachedGigs(calendar.dateLocale, calendar.private)
+          if (cachedGigs.length > 0) {
+            setGigs(cachedGigs)
+          }
           setSyncFailed(true)
           console.warn('Gig sync failed, using fallback data.', { error, authError })
+          alertGigSyncFailure({ primaryError: error, retryError: authError })
         }
       }
     }
@@ -763,12 +865,12 @@ export default function GigCalendar() {
         )}
 
         <div className="overflow-hidden rounded-sm border border-olive-800">
-          {configMissing ? (
+          {showRuntimeWarnings && configMissing ? (
             <p className="border-b border-olive-800 bg-amber-500/10 px-6 py-4 text-sm text-amber-200">
               {calendar.configMissing}
             </p>
           ) : null}
-          {syncFailed && !configMissing && fallbackGigs.length === 0 ? (
+          {showRuntimeWarnings && syncFailed && !configMissing && fallbackGigs.length === 0 ? (
             <p className="border-b border-olive-800 bg-amber-500/10 px-6 py-4 text-sm text-amber-200">
               {calendar.syncFailed}
             </p>
