@@ -207,6 +207,7 @@ const fi = {
     placeColumn: 'Paikka',
     ticketSales: 'Lipunmyynti',
     empty: 'Ei tulevia keikkoja juuri nyt.',
+    loading: 'Keikkatietoja ladataan…',
     temporarilyUnavailable:
       'Keikkalista päivittyy parhaillaan. Tarkista hetken kuluttua uudelleen.',
     otherGigs: 'Muut keikat',

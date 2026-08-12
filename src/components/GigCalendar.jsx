@@ -176,25 +176,6 @@ function buildGigDisplayFields({
   }
 }
 
-function normalizeFallbackGig(gig, dateLocale, privateLabel) {
-  const eventText = gig.event ?? ''
-  const [place, city] = eventText.split('—').map((part) => part.trim())
-
-  return {
-    id: `${gig.date}-${eventText}`,
-    date: formatDate(gig.date, dateLocale),
-    parsedDate: parseGigDate(gig.date),
-    ...buildGigDisplayFields({
-      eventType: gig.eventType,
-      festivalName: gig.festivalName,
-      venue: place || eventText,
-      city,
-      ticketUrl: gig.ticketUrl,
-      privateLabel,
-    }),
-  }
-}
-
 function normalizeFirestoreGig(doc, dateLocale, privateLabel) {
   const data = doc.data()
 
@@ -763,15 +744,29 @@ function GigCalendarView({ upcomingGigs, startOfToday, calendar }) {
   )
 }
 
+function GigLoadingState({ label }) {
+  return (
+    <div
+      className="flex flex-col items-center justify-center gap-4 px-6 py-12"
+      role="status"
+      aria-live="polite"
+    >
+      <span
+        className="h-8 w-8 animate-spin rounded-full border-2 border-olive-700 border-t-gold-400"
+        aria-hidden
+      />
+      <p className="text-sm text-cream-muted">{label}</p>
+    </div>
+  )
+}
+
 export default function GigCalendar() {
   const { content } = useLanguage()
   const { calendar } = content
-  const fallbackGigs = []
   const [gigs, setGigs] = useState(() =>
-    fallbackGigs.map((gig) =>
-      normalizeFallbackGig(gig, calendar.dateLocale, calendar.private),
-    ),
+    readCachedGigs(calendar.dateLocale, calendar.private),
   )
+  const [isLoading, setIsLoading] = useState(true)
   const [syncFailed, setSyncFailed] = useState(false)
   const [configMissing, setConfigMissing] = useState(!isFirebaseConfigured)
   const [view, setView] = useState('list')
@@ -856,10 +851,12 @@ export default function GigCalendar() {
       if (!db) {
         setConfigMissing(true)
         setSyncFailed(false)
+        setIsLoading(false)
         return
       }
 
       setConfigMissing(false)
+      setIsLoading(true)
 
       try {
         const fetchedGigs = await fetchFirestoreGigs()
@@ -906,6 +903,8 @@ export default function GigCalendar() {
           console.warn('Gig sync failed, using fallback data.', { error, authError })
           alertGigSyncFailure({ primaryError: error, retryError: authError })
         }
+      } finally {
+        setIsLoading(false)
       }
     }
 
@@ -913,6 +912,7 @@ export default function GigCalendar() {
   }, [calendar.dateLocale, calendar.private])
 
   const isEmpty = upcomingGigs.length === 0
+  const showLoading = isLoading && isEmpty
 
   return (
     <section id="kalenteri" className="section-padding">
@@ -946,7 +946,9 @@ export default function GigCalendar() {
         )}
 
         <div className="overflow-hidden rounded-sm border border-olive-800">
-          {isEmpty ? (
+          {showLoading ? (
+            <GigLoadingState label={calendar.loading} />
+          ) : isEmpty ? (
             <p className="px-6 py-8 text-sm text-cream-muted">
               {syncFailed ? calendar.temporarilyUnavailable : calendar.empty}
             </p>

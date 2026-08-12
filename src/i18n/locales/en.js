@@ -207,6 +207,7 @@ const en = {
     placeColumn: 'Venue',
     ticketSales: 'Ticket sales',
     empty: 'No upcoming gigs at the moment.',
+    loading: 'Loading gig information…',
     temporarilyUnavailable:
       'The gig list is updating right now. Please check again shortly.',
     otherGigs: 'Other gigs',
