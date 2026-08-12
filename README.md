@@ -40,6 +40,7 @@ Vite upottaa `VITE_*`-muuttujat **buildin aikana**. Jos lisäsit muuttujat vasta
 
 1. **Site configuration** → **Environment variables** (kaikki `VITE_FIREBASE_*` arvot `.env`-tiedostosta)
 2. **Deploys** → **Trigger deploy** → **Clear cache and deploy site**
+3. Jos käytössä on monikäyttäjämalli, lisää myös `VITE_FIREBASE_OWNER_UID` (sen käyttäjän UID, jonka `gigs` näytetään sivulla)
 
 Firebase Console ([console.firebase.google.com](https://console.firebase.google.com)):
 

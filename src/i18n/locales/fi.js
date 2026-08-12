@@ -207,6 +207,8 @@ const fi = {
     placeColumn: 'Paikka',
     ticketSales: 'Lipunmyynti',
     empty: 'Ei tulevia keikkoja juuri nyt.',
+    temporarilyUnavailable:
+      'Keikkalista päivittyy parhaillaan. Tarkista hetken kuluttua uudelleen.',
     otherGigs: 'Muut keikat',
     gigsInMonth: (n) => (n === 1 ? '1 keikka' : `${n} keikkaa`),
     expandMonth: 'Näytä kuukauden keikat',

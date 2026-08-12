@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { collection, getDocs, query, orderBy } from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, where } from 'firebase/firestore'
 import { useLanguage } from '../i18n/LanguageContext'
 import { db, ensureFirebaseSession, isFirebaseConfigured } from '../lib/firebase'
 import SectionHeading from './ui/SectionHeading'
@@ -8,6 +8,10 @@ const GIG_CACHE_KEY = 'gigCalendar:lastSuccessfulSnapshot:v1'
 const GIG_SYNC_ALERT_KEY = 'gigCalendar:lastSyncAlertAt'
 const GIG_SYNC_ALERT_COOLDOWN_MS = 6 * 60 * 60 * 1000
 const GIG_SYNC_ALERT_WEBHOOK_URL = import.meta.env.VITE_GIG_SYNC_ALERT_WEBHOOK_URL
+const GIG_OWNER_UID = (
+  import.meta.env.VITE_FIREBASE_OWNER_UID ||
+  'IE4axMIEIxMDr2wnxNygKnks4DQ2'
+).trim()
 
 function getMonthFormatter(dateLocale) {
   return new Intl.DateTimeFormat(dateLocale, {
@@ -239,6 +243,18 @@ function readCachedGigs(dateLocale, privateLabel) {
   } catch (error) {
     console.warn('Failed to read cached gigs snapshot.', error)
     return []
+  }
+}
+
+function hasCachedGigs() {
+  if (typeof window === 'undefined') return false
+  try {
+    const raw = window.localStorage.getItem(GIG_CACHE_KEY)
+    if (!raw) return false
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) && parsed.length > 0
+  } catch {
+    return false
   }
 }
 
@@ -789,12 +805,22 @@ export default function GigCalendar() {
 
   useEffect(() => {
     const fetchFirestoreGigs = async () => {
-      const gigsQuery = query(collection(db, 'gigs'), orderBy('date', 'asc'))
+      const constraints = []
+      if (GIG_OWNER_UID) {
+        constraints.push(where('ownerId', '==', GIG_OWNER_UID))
+      }
+      constraints.push(orderBy('date', 'asc'))
+      const gigsQuery = query(collection(db, 'gigs'), ...constraints)
       const snapshot = await getDocs(gigsQuery)
-      writeCachedGigs(snapshot.docs)
-      return snapshot.docs.map((doc) =>
+      const normalizedGigs = snapshot.docs.map((doc) =>
         normalizeFirestoreGig(doc, calendar.dateLocale, calendar.private),
       )
+
+      if (snapshot.docs.length > 0) {
+        writeCachedGigs(snapshot.docs)
+      }
+
+      return normalizedGigs
     }
 
     const loadGigs = async () => {
@@ -808,12 +834,38 @@ export default function GigCalendar() {
 
       try {
         const fetchedGigs = await fetchFirestoreGigs()
+        if (fetchedGigs.length === 0 && hasCachedGigs()) {
+          const cachedGigs = readCachedGigs(calendar.dateLocale, calendar.private)
+          if (cachedGigs.length > 0) {
+            setGigs(cachedGigs)
+            setSyncFailed(true)
+            alertGigSyncFailure({
+              primaryError: new Error('Firestore returned empty gigs; using cache'),
+              retryError: null,
+            })
+            return
+          }
+        }
+
         setGigs(fetchedGigs)
         setSyncFailed(false)
       } catch (error) {
         try {
           await ensureFirebaseSession()
           const fetchedGigs = await fetchFirestoreGigs()
+          if (fetchedGigs.length === 0 && hasCachedGigs()) {
+            const cachedGigs = readCachedGigs(calendar.dateLocale, calendar.private)
+            if (cachedGigs.length > 0) {
+              setGigs(cachedGigs)
+              setSyncFailed(true)
+              alertGigSyncFailure({
+                primaryError: new Error('Firestore returned empty gigs after auth; using cache'),
+                retryError: null,
+              })
+              return
+            }
+          }
+
           setGigs(fetchedGigs)
           setSyncFailed(false)
         } catch (authError) {
@@ -877,7 +929,9 @@ export default function GigCalendar() {
           ) : null}
 
           {isEmpty ? (
-            <p className="px-6 py-8 text-sm text-cream-muted">{calendar.empty}</p>
+            <p className="px-6 py-8 text-sm text-cream-muted">
+              {syncFailed ? calendar.temporarilyUnavailable : calendar.empty}
+            </p>
           ) : view === 'list' ? (
             <GigListView monthlyGroups={monthlyGroups} calendar={calendar} />
           ) : (

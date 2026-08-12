@@ -207,6 +207,8 @@ const en = {
     placeColumn: 'Venue',
     ticketSales: 'Ticket sales',
     empty: 'No upcoming gigs at the moment.',
+    temporarilyUnavailable:
+      'The gig list is updating right now. Please check again shortly.',
     otherGigs: 'Other gigs',
     gigsInMonth: (n) => (n === 1 ? '1 gig' : `${n} gigs`),
     expandMonth: 'Show gigs for this month',
