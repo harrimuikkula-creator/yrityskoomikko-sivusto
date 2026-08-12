@@ -755,7 +755,6 @@ export default function GigCalendar() {
   const [syncFailed, setSyncFailed] = useState(false)
   const [configMissing, setConfigMissing] = useState(!isFirebaseConfigured)
   const [view, setView] = useState('list')
-  const showRuntimeWarnings = import.meta.env.DEV
 
   const today = new Date()
   const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
@@ -924,17 +923,6 @@ export default function GigCalendar() {
         )}
 
         <div className="overflow-hidden rounded-sm border border-olive-800">
-          {showRuntimeWarnings && configMissing ? (
-            <p className="border-b border-olive-800 bg-amber-500/10 px-6 py-4 text-sm text-amber-200">
-              {calendar.configMissing}
-            </p>
-          ) : null}
-          {showRuntimeWarnings && syncFailed && !configMissing && fallbackGigs.length === 0 ? (
-            <p className="border-b border-olive-800 bg-amber-500/10 px-6 py-4 text-sm text-amber-200">
-              {calendar.syncFailed}
-            </p>
-          ) : null}
-
           {isEmpty ? (
             <p className="px-6 py-8 text-sm text-cream-muted">
               {syncFailed ? calendar.temporarilyUnavailable : calendar.empty}
