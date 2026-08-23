@@ -1,4 +1,4 @@
-import { incrementSiteVisitCount } from './lib/firebaseAdmin.mjs'
+import { incrementVisitCount } from './lib/visitCounter.mjs'
 
 function json(statusCode, body) {
   return {
@@ -94,7 +94,7 @@ export async function handler(event) {
 
     let totalVisits = null
     try {
-      totalVisits = await incrementSiteVisitCount()
+      totalVisits = await incrementVisitCount()
     } catch (counterError) {
       console.warn('record-visit: visit counter failed', counterError)
     }
