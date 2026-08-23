@@ -65,7 +65,7 @@ Firebase Console / Google Cloud:
 
 ```
 match /gigs/{id} {
-  allow read: if resource.data.ownerId == "IE4axMIEIxMDr2wnxNygKnks4DQ2"
+  allow read: if resource.data.ownerId == "YOUR_FIREBASE_OWNER_UID"
     || (signedIn() && canAccessOwner(resource.data.ownerId));
   allow create: if signedIn() && createOwnerOk();
   allow update: if signedIn() && canAccessOwner(resource.data.ownerId) && ownerUnchanged();
