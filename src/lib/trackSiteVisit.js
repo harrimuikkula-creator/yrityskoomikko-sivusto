@@ -1,5 +1,3 @@
-import { incrementClientVisitCount } from './incrementVisitCount'
-
 const SESSION_KEY = 'siteVisitTracked:v1'
 
 /**
@@ -19,22 +17,17 @@ export function trackSiteVisit() {
     // If sessionStorage is blocked, still attempt one beacon this load.
   }
 
-  void (async () => {
-    const totalVisits = await incrementClientVisitCount()
+  const payload = {
+    pageUrl: window.location.href,
+    referrer: document.referrer || '',
+  }
 
-    const payload = {
-      pageUrl: window.location.href,
-      referrer: document.referrer || '',
-      totalVisits,
-    }
-
-    fetch('/.netlify/functions/record-visit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      keepalive: true,
-    }).catch((error) => {
-      console.warn('Visit tracking failed.', error)
-    })
-  })()
+  fetch('/.netlify/functions/record-visit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    keepalive: true,
+  }).catch((error) => {
+    console.warn('Visit tracking failed.', error)
+  })
 }

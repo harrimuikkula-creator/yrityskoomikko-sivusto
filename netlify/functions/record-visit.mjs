@@ -84,25 +84,19 @@ export async function handler(event) {
   try {
     let pageUrl = ''
     let referrer = ''
-    let totalVisits = null
     try {
       const parsed = JSON.parse(event.body || '{}')
       pageUrl = String(parsed.pageUrl || '').slice(0, 500)
       referrer = String(parsed.referrer || '').slice(0, 500)
-      const clientCount = Number(parsed.totalVisits)
-      if (Number.isFinite(clientCount) && clientCount > 0) {
-        totalVisits = clientCount
-      }
     } catch {
       // ignore malformed body
     }
 
-    if (totalVisits === null) {
-      try {
-        totalVisits = await incrementVisitCount()
-      } catch (counterError) {
-        console.warn('record-visit: visit counter failed', counterError)
-      }
+    let totalVisits = null
+    try {
+      totalVisits = await incrementVisitCount()
+    } catch (counterError) {
+      console.warn('record-visit: visit counter failed', counterError)
     }
 
     const userAgent = event.headers['user-agent'] || event.headers['User-Agent'] || ''
