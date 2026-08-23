@@ -180,10 +180,10 @@ const fi = {
     submittingLabel: 'Lähetetään...',
     successMessage: 'Kiitos viestistä! Otan yhteyttä pian.',
     errorMessage:
-      'Viestin lähetys epäonnistui. Viesti yritettiin jo lähettää varakanavaan — jos sekin epäonnistui, lähetä suoraan sähköpostilla:',
-    mailtoFallbackLabel: 'Avaa valmis sähköpostiviesti',
+      'Lomakkeen lähetyksessä on juuri nyt ongelmia. Voit laittaa keikkakyselyn suoraan osoitteeseen harri.muikkula@gmail.com.',
+    mailtoFallbackLabel: 'Avaa valmis sähköposti harri.muikkula@gmail.com',
     configErrorMessage:
-      'Lomaketta ei ole vielä kytketty sähköpostiin. Lisää Web3Forms-avain .env-tiedostoon.',
+      'Lomakkeen lähetyksessä on juuri nyt ongelmia. Voit laittaa keikkakyselyn suoraan osoitteeseen harri.muikkula@gmail.com.',
   },
 
   calendar: {

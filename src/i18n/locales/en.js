@@ -180,10 +180,10 @@ const en = {
     submittingLabel: 'Sending...',
     successMessage: 'Thank you for your message! I will be in touch soon.',
     errorMessage:
-      'Sending failed. A backup channel was also tried — if that failed too, please email directly:',
-    mailtoFallbackLabel: 'Open a prefilled email',
+      'There is a problem sending the form right now. Please send your inquiry directly to harri.muikkula@gmail.com.',
+    mailtoFallbackLabel: 'Open a prefilled email to harri.muikkula@gmail.com',
     configErrorMessage:
-      'The form is not connected to email yet. Add the Web3Forms key to the .env file.',
+      'There is a problem sending the form right now. Please send your inquiry directly to harri.muikkula@gmail.com.',
   },
 
   calendar: {
