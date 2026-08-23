@@ -180,7 +180,8 @@ const fi = {
     submittingLabel: 'Lähetetään...',
     successMessage: 'Kiitos viestistä! Otan yhteyttä pian.',
     errorMessage:
-      'Viestin lähetys epäonnistui. Yritä uudelleen tai ota yhteyttä sähköpostilla.',
+      'Viestin lähetys epäonnistui. Viesti yritettiin jo lähettää varakanavaan — jos sekin epäonnistui, lähetä suoraan sähköpostilla:',
+    mailtoFallbackLabel: 'Avaa valmis sähköpostiviesti',
     configErrorMessage:
       'Lomaketta ei ole vielä kytketty sähköpostiin. Lisää Web3Forms-avain .env-tiedostoon.',
   },

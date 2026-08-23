@@ -180,7 +180,8 @@ const en = {
     submittingLabel: 'Sending...',
     successMessage: 'Thank you for your message! I will be in touch soon.',
     errorMessage:
-      'Sending failed. Please try again or contact us by email.',
+      'Sending failed. A backup channel was also tried — if that failed too, please email directly:',
+    mailtoFallbackLabel: 'Open a prefilled email',
     configErrorMessage:
       'The form is not connected to email yet. Add the Web3Forms key to the .env file.',
   },

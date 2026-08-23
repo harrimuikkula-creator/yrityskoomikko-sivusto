@@ -61,7 +61,7 @@ Jos API-avaimella on referrer-rajoituksia Google Cloudissa, lisää myös `*.net
 
 - Kalenteri tallentaa selaimen `localStorage`en viimeisimmän onnistuneen keikkadatan.
 - Jos Firestore-synkronointi epäonnistuu myöhemmin, sivu näyttää automaattisesti tämän viimeisimmän toimineen datan.
-- Tuotannossa käyttäjälle ei näytetä Firebase/synkronointi-virhebannereita (varoitukset näkyvät vain dev-tilassa).
+- Discord-hälytys lähtee vain oikeasta synkkivirheestä (ei tyhjästä, mutta onnistuneesta vastauksesta). Hälytys tarkoittaa, että joku on ladannut sivun ja synkronointi epäonnistui hänen selaimessaan.
 - Voit ottaa omistajahälytyksen käyttöön lisäämällä ympäristömuuttujan:
 
 ```
@@ -79,6 +79,12 @@ VITE_SIMULATE_GIG_SYNC_FAILURE=1
 ```
 
 Muista palauttaa arvoon `0` testin jälkeen.
+
+### Yhteydenottolomake
+
+- Ensisijainen kanava: Web3Forms (`VITE_WEB3FORMS_ACCESS_KEY`).
+- **Jokainen** tarjouspyyntö lähetetään myös Discordiin (`VITE_GIG_SYNC_ALERT_WEBHOOK_URL`), jotta lead ei katoa vaikka sähköposti pettäisi.
+- Jos sekä sähköposti että Discord epäonnistuvat, käyttäjälle tarjotaan valmis `mailto:`-linkki.
 
 ## GitHub
 

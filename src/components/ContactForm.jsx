@@ -28,9 +28,11 @@ export default function ContactForm() {
   const { contact, brand, common } = content
   const [form, setForm] = useState(initialFormState)
   const [emailConfirm, setEmailConfirm] = useState('')
+  const [honeypot, setHoneypot] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
+  const [mailtoFallbackHref, setMailtoFallbackHref] = useState(null)
 
   const email = form.email.trim()
   const emailConfirmTrimmed = emailConfirm.trim()
@@ -77,27 +79,60 @@ export default function ContactForm() {
   function resetForm() {
     setForm(initialFormState)
     setEmailConfirm('')
+    setHoneypot('')
+    setMailtoFallbackHref(null)
+  }
+
+  function buildMailtoFallback({ name, email, phone, company, date, message }) {
+    const preferredDate = date
+      ? new Date(date).toLocaleDateString('fi-FI')
+      : 'Ei annettu'
+    const subject = encodeURIComponent(
+      company ? `Keikkakysely: ${company} – ${name}` : `Keikkakysely – ${name}`,
+    )
+    const body = encodeURIComponent(
+      [
+        `Nimi: ${name}`,
+        `Sähköposti: ${email}`,
+        `Puhelin: ${phone}`,
+        `Yritys: ${company || '—'}`,
+        `Toivottu päivä: ${preferredDate}`,
+        '',
+        message,
+      ].join('\n'),
+    )
+    return `mailto:${brand.email}?subject=${subject}&body=${body}`
   }
 
   async function handleSubmit(event) {
     event.preventDefault()
     if (!validation.canSubmit || submitting) return
+    // Honeypot filled => treat as bot, pretend success without sending.
+    if (honeypot.trim() !== '') {
+      setSubmitted(true)
+      resetForm()
+      return
+    }
 
     setError(null)
+    setMailtoFallbackHref(null)
     setSubmitting(true)
 
+    const payload = {
+      ...form,
+      name: form.name.trim(),
+      email,
+      phone: form.phone.trim(),
+      company: form.company.trim(),
+      message: form.message.trim(),
+    }
+
     try {
-      await sendContactEmail({
-        ...form,
-        name: form.name.trim(),
-        email,
-        phone: form.phone.trim(),
-        company: form.company.trim(),
-        message: form.message.trim(),
-      })
+      await sendContactEmail(payload)
       setSubmitted(true)
       resetForm()
     } catch (err) {
+      setMailtoFallbackHref(buildMailtoFallback(payload))
       if (err.message === 'WEB3FORMS_NOT_CONFIGURED') {
         setError(contact.configErrorMessage)
       } else {
@@ -188,6 +223,18 @@ export default function ContactForm() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="hidden" aria-hidden="true">
+                  <label htmlFor="website">Website</label>
+                  <input
+                    id="website"
+                    name="website"
+                    type="text"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    value={honeypot}
+                    onChange={(event) => setHoneypot(event.target.value)}
+                  />
+                </div>
                 <div>
                   <label
                     htmlFor="name"
@@ -330,12 +377,22 @@ export default function ContactForm() {
                   />
                 </div>
                 {error && (
-                  <p
+                  <div
                     role="alert"
-                    className="rounded-sm border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200"
+                    className="space-y-3 rounded-sm border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-200"
                   >
-                    {error}
-                  </p>
+                    <p>{error}</p>
+                    {mailtoFallbackHref && (
+                      <p>
+                        <a
+                          href={mailtoFallbackHref}
+                          className="font-semibold text-gold-300 underline-offset-4 hover:underline"
+                        >
+                          {contact.mailtoFallbackLabel}
+                        </a>
+                      </p>
+                    )}
+                  </div>
                 )}
                 <Button
                   type="submit"

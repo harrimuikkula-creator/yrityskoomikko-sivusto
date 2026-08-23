@@ -2,13 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { collection, getDocs, query, orderBy, where } from 'firebase/firestore'
 import { useLanguage } from '../i18n/LanguageContext'
 import { db, ensureFirebaseSession, isFirebaseConfigured } from '../lib/firebase'
+import { sendDiscordAlert } from '../lib/discordAlert'
 import SectionHeading from './ui/SectionHeading'
 
 const GIG_CACHE_KEY = 'gigCalendar:lastSuccessfulSnapshot:v1'
 const GIG_SYNC_ALERT_KEY = 'gigCalendar:lastSyncAlertAt'
 const GIG_SYNC_ALERT_COOLDOWN_MS = 6 * 60 * 60 * 1000
-const GIG_SYNC_ALERT_WEBHOOK_URL = import.meta.env.VITE_GIG_SYNC_ALERT_WEBHOOK_URL
-const GIG_SYNC_ALERT_MENTION = (import.meta.env.VITE_GIG_SYNC_ALERT_MENTION || '').trim()
 const GIG_OWNER_UID = (import.meta.env.VITE_FIREBASE_OWNER_UID || '').trim()
 const SIMULATE_GIG_SYNC_FAILURE = import.meta.env.VITE_SIMULATE_GIG_SYNC_FAILURE === '1'
 
@@ -265,54 +264,23 @@ function writeCachedGigs(docs) {
 }
 
 async function alertGigSyncFailure({ primaryError, retryError }) {
-  if (!GIG_SYNC_ALERT_WEBHOOK_URL || typeof window === 'undefined') return
-  try {
-    const lastAlertAt = Number(window.localStorage.getItem(GIG_SYNC_ALERT_KEY) ?? 0)
-    const now = Date.now()
-    if (Number.isFinite(lastAlertAt) && now - lastAlertAt < GIG_SYNC_ALERT_COOLDOWN_MS) {
-      return
-    }
+  const primaryErrorText = String(primaryError?.message ?? primaryError ?? 'unknown')
+  const retryErrorText = String(retryError?.message ?? retryError ?? 'none')
 
-    const primaryErrorText = String(primaryError?.message ?? primaryError ?? 'unknown')
-    const retryErrorText = String(retryError?.message ?? retryError ?? 'none')
-    const timestamp = new Date(now).toISOString()
-    const mentionPrefix = GIG_SYNC_ALERT_MENTION ? `${GIG_SYNC_ALERT_MENTION} ` : ''
-    const payload = {
-      username: 'Gig Calendar Monitor',
-      avatar_url: 'https://cdn-icons-png.flaticon.com/512/3652/3652191.png',
-      content: `${mentionPrefix}🚨 Keikkasynkronointi epäonnistui`,
-      allowed_mentions: {
-        parse: ['users', 'roles', 'everyone'],
-      },
-      embeds: [
-        {
-          title: 'Gig sync failure detected',
-          color: 15158332,
-          fields: [
-            { name: 'Host', value: window.location.hostname || 'unknown', inline: true },
-            { name: 'Time', value: timestamp, inline: true },
-            { name: 'Page', value: window.location.href || '-', inline: false },
-            { name: 'Primary error', value: `\`${primaryErrorText.slice(0, 1000)}\``, inline: false },
-            { name: 'Retry error', value: `\`${retryErrorText.slice(0, 1000)}\``, inline: false },
-          ],
-          footer: { text: 'yrityskoomikko-sivusto • gig-calendar' },
-          timestamp,
-        },
-      ],
-    }
-
-    const response = await fetch(GIG_SYNC_ALERT_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    if (!response.ok) {
-      throw new Error(`Webhook failed with status ${response.status}`)
-    }
-    window.localStorage.setItem(GIG_SYNC_ALERT_KEY, String(now))
-  } catch (error) {
-    console.warn('Gig sync alert webhook failed.', error)
-  }
+  await sendDiscordAlert({
+    username: 'Gig Calendar Monitor',
+    title: 'Gig sync failure detected',
+    content: '🚨 Keikkasynkronointi epäonnistui',
+    cooldownKey: GIG_SYNC_ALERT_KEY,
+    cooldownMs: GIG_SYNC_ALERT_COOLDOWN_MS,
+    fields: [
+      { name: 'Host', value: window.location.hostname || 'unknown', inline: true },
+      { name: 'Time', value: new Date().toISOString(), inline: true },
+      { name: 'Page', value: window.location.href || '-' },
+      { name: 'Primary error', value: `\`${primaryErrorText.slice(0, 1000)}\`` },
+      { name: 'Retry error', value: `\`${retryErrorText.slice(0, 1000)}\`` },
+    ],
+  })
 }
 
 function CityBadge({ city }) {
@@ -768,7 +736,7 @@ export default function GigCalendar() {
   )
   const [isLoading, setIsLoading] = useState(true)
   const [syncFailed, setSyncFailed] = useState(false)
-  const [configMissing, setConfigMissing] = useState(!isFirebaseConfigured)
+  const [, setConfigMissing] = useState(!isFirebaseConfigured)
   const [view, setView] = useState('list')
 
   const today = new Date()
@@ -819,10 +787,11 @@ export default function GigCalendar() {
       if (SIMULATE_GIG_SYNC_FAILURE) {
         throw new Error('Simulated gig sync failure (VITE_SIMULATE_GIG_SYNC_FAILURE=1)')
       }
-      const constraints = []
-      if (GIG_OWNER_UID) {
-        constraints.push(where('ownerId', '==', GIG_OWNER_UID))
+      if (!GIG_OWNER_UID) {
+        throw new Error('VITE_FIREBASE_OWNER_UID is missing')
       }
+
+      const constraints = [where('ownerId', '==', GIG_OWNER_UID)]
       let snapshot
       try {
         const gigsQuery = query(collection(db, 'gigs'), ...constraints, orderBy('date', 'asc'))
@@ -860,15 +829,13 @@ export default function GigCalendar() {
 
       try {
         const fetchedGigs = await fetchFirestoreGigs()
+        // Successful empty response is valid (no upcoming docs). Keep cache if present
+        // for UX, but do not treat it as a sync failure / Discord alert.
         if (fetchedGigs.length === 0 && hasCachedGigs()) {
           const cachedGigs = readCachedGigs(calendar.dateLocale, calendar.private)
           if (cachedGigs.length > 0) {
             setGigs(cachedGigs)
-            setSyncFailed(true)
-            alertGigSyncFailure({
-              primaryError: new Error('Firestore returned empty gigs; using cache'),
-              retryError: null,
-            })
+            setSyncFailed(false)
             return
           }
         }
@@ -883,11 +850,7 @@ export default function GigCalendar() {
             const cachedGigs = readCachedGigs(calendar.dateLocale, calendar.private)
             if (cachedGigs.length > 0) {
               setGigs(cachedGigs)
-              setSyncFailed(true)
-              alertGigSyncFailure({
-                primaryError: new Error('Firestore returned empty gigs after auth; using cache'),
-                retryError: null,
-              })
+              setSyncFailed(false)
               return
             }
           }
