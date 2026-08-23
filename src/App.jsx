@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import Header from './components/Header'
 import Hero from './components/Hero'
 import Intro from './components/Intro'
@@ -7,8 +8,13 @@ import References from './components/References'
 import ContactForm from './components/ContactForm'
 import Footer from './components/Footer'
 import GigInquiryBar from './components/GigInquiryBar'
+import { trackSiteVisit } from './lib/trackSiteVisit'
 
 function App() {
+  useEffect(() => {
+    trackSiteVisit()
+  }, [])
+
   return (
     <>
       <Header />

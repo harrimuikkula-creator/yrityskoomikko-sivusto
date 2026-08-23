@@ -7,9 +7,11 @@ import SectionHeading from './ui/SectionHeading'
 
 const GIG_CACHE_KEY = 'gigCalendar:lastSuccessfulSnapshot:v1'
 const GIG_SYNC_ALERT_KEY = 'gigCalendar:lastSyncAlertAt'
-const GIG_SYNC_ALERT_COOLDOWN_MS = 6 * 60 * 60 * 1000
+const GIG_SYNC_ALERT_COOLDOWN_MS = 12 * 60 * 60 * 1000
 const GIG_OWNER_UID = (import.meta.env.VITE_FIREBASE_OWNER_UID || '').trim()
 const SIMULATE_GIG_SYNC_FAILURE = import.meta.env.VITE_SIMULATE_GIG_SYNC_FAILURE === '1'
+
+let gigSyncAlertInFlight = null
 
 function getMonthFormatter(dateLocale) {
   return new Intl.DateTimeFormat(dateLocale, {
@@ -237,10 +239,28 @@ function hasCachedGigs() {
   }
 }
 
-function writeCachedGigs(docs) {
+function writeCachedGigRecords(records) {
   if (typeof window === 'undefined') return
   try {
-    const serializable = docs.map((doc) => {
+    const serializable = records.map((gig) => ({
+      id: gig.id,
+      date: gig.date ?? '',
+      eventType: gig.eventType ?? 'public',
+      festivalName: gig.festivalName ?? '',
+      venue: gig.venue ?? '',
+      clubName: gig.clubName ?? '',
+      city: gig.city ?? '',
+      ticketUrl: gig.ticketUrl ?? '',
+    }))
+    window.localStorage.setItem(GIG_CACHE_KEY, JSON.stringify(serializable))
+  } catch (error) {
+    console.warn('Failed to write cached gigs snapshot.', error)
+  }
+}
+
+function writeCachedGigs(docs) {
+  writeCachedGigRecords(
+    docs.map((doc) => {
       const data = doc.data()
       let cacheDate = data.date
       if (typeof data.date?.toDate === 'function') {
@@ -256,31 +276,56 @@ function writeCachedGigs(docs) {
         city: data.city ?? '',
         ticketUrl: data.ticketUrl ?? '',
       }
-    })
-    window.localStorage.setItem(GIG_CACHE_KEY, JSON.stringify(serializable))
-  } catch (error) {
-    console.warn('Failed to write cached gigs snapshot.', error)
+    }),
+  )
+}
+
+async function fetchGigsFromNetlifyFunction(dateLocale, privateLabel) {
+  const response = await fetch('/.netlify/functions/gigs', {
+    headers: { Accept: 'application/json' },
+  })
+  if (!response.ok) {
+    throw new Error(`Netlify gigs function failed (${response.status})`)
   }
+  const payload = await response.json()
+  if (!Array.isArray(payload?.gigs)) {
+    throw new Error('Netlify gigs function returned invalid payload')
+  }
+  writeCachedGigRecords(payload.gigs)
+  return payload.gigs.map((gig) => normalizeCachedGig(gig, dateLocale, privateLabel))
 }
 
 async function alertGigSyncFailure({ primaryError, retryError }) {
-  const primaryErrorText = String(primaryError?.message ?? primaryError ?? 'unknown')
-  const retryErrorText = String(retryError?.message ?? retryError ?? 'none')
+  if (gigSyncAlertInFlight) {
+    await gigSyncAlertInFlight
+    return
+  }
 
-  await sendDiscordAlert({
-    username: 'Gig Calendar Monitor',
-    title: 'Gig sync failure detected',
-    content: '🚨 Keikkasynkronointi epäonnistui',
-    cooldownKey: GIG_SYNC_ALERT_KEY,
-    cooldownMs: GIG_SYNC_ALERT_COOLDOWN_MS,
-    fields: [
-      { name: 'Host', value: window.location.hostname || 'unknown', inline: true },
-      { name: 'Time', value: new Date().toISOString(), inline: true },
-      { name: 'Page', value: window.location.href || '-' },
-      { name: 'Primary error', value: `\`${primaryErrorText.slice(0, 1000)}\`` },
-      { name: 'Retry error', value: `\`${retryErrorText.slice(0, 1000)}\`` },
-    ],
-  })
+  gigSyncAlertInFlight = (async () => {
+    const primaryErrorText = String(primaryError?.message ?? primaryError ?? 'unknown')
+    const retryErrorText = String(retryError?.message ?? retryError ?? 'none')
+
+    await sendDiscordAlert({
+      username: 'Gig Calendar Monitor',
+      title: 'Gig sync failure detected',
+      content: '🚨 Keikkasynkronointi epäonnistui',
+      cooldownKey: GIG_SYNC_ALERT_KEY,
+      cooldownMs: GIG_SYNC_ALERT_COOLDOWN_MS,
+      fields: [
+        { name: 'Host', value: window.location.hostname || 'unknown', inline: true },
+        { name: 'Time', value: new Date().toISOString(), inline: true },
+        { name: 'Page', value: window.location.href || '-' },
+        { name: 'Primary error', value: `\`${primaryErrorText.slice(0, 1000)}\`` },
+        { name: 'Retry error', value: `\`${retryErrorText.slice(0, 1000)}\`` },
+      ],
+    })
+  })()
+
+  try {
+    await gigSyncAlertInFlight
+  } finally {
+    gigSyncAlertInFlight = null
+  }
 }
 
 function CityBadge({ city }) {
@@ -817,7 +862,7 @@ export default function GigCalendar() {
     }
 
     const loadGigs = async () => {
-      if (!db) {
+      if (!db && !GIG_OWNER_UID) {
         setConfigMissing(true)
         setSyncFailed(false)
         setIsLoading(false)
@@ -828,6 +873,23 @@ export default function GigCalendar() {
       setIsLoading(true)
 
       try {
+        // Prefer Netlify Admin function (bypasses broken client Firestore rules / API key referrer blocks).
+        try {
+          const apiGigs = await fetchGigsFromNetlifyFunction(
+            calendar.dateLocale,
+            calendar.private,
+          )
+          setGigs(apiGigs)
+          setSyncFailed(false)
+          return
+        } catch (apiError) {
+          console.warn('Netlify gigs function unavailable, falling back to Firestore client.', apiError)
+        }
+
+        if (!db) {
+          throw new Error('Firestore client is not configured')
+        }
+
         const fetchedGigs = await fetchFirestoreGigs()
         // Successful empty response is valid (no upcoming docs). Keep cache if present
         // for UX, but do not treat it as a sync failure / Discord alert.

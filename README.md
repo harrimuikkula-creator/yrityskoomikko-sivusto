@@ -42,49 +42,64 @@ Vite upottaa `VITE_*`-muuttujat **buildin aikana**. Jos lisäsit muuttujat vasta
 2. **Deploys** → **Trigger deploy** → **Clear cache and deploy site**
 3. Jos käytössä on monikäyttäjämalli, lisää myös `VITE_FIREBASE_OWNER_UID` (sen käyttäjän UID, jonka `gigs` näytetään sivulla)
 
-Firebase Console ([console.firebase.google.com](https://console.firebase.google.com)):
+#### Suositeltu kestävä korjaus (ohittaa client-rules-ongelmat)
 
-1. **Authentication** → **Settings** → **Authorized domains** → lisää `sinun-sivu.netlify.app` (ja oma domain)
+Tuotanto hakee keikat ensisijaisesti Netlify-funktiosta `/.netlify/functions/gigs`, joka käyttää Firebase Admin SDK:ta.
+
+1. Firebase Console → **Project settings** → **Service accounts** → **Generate new private key**
+2. Netlify → Environment variables → lisää:
+   - Key: `FIREBASE_SERVICE_ACCOUNT_JSON`
+   - Value: koko JSON yhdellä rivillä (koko service account -tiedoston sisältö)
+3. Varmista että `VITE_FIREBASE_OWNER_UID` on asetettu
+4. **Clear cache and deploy**
+
+Ilman tätä client-puolen Firestore kaatuu, jos:
+- rules eivät salli julkista lukua `ownerId`:lle, tai
+- Google API key estää referrerin `harrimuikkula.netlify.app`
+
+Firebase Console / Google Cloud:
+
+1. **Authentication** → **Settings** → **Authorized domains** → lisää `harrimuikkula.netlify.app` (ja oma domain)
 2. **Authentication** → **Sign-in method** → **Anonymous** → **Enable**
-3. **Firestore** → **Rules** → salli `gigs`-kokoelman **read** (esim. anonyymille tai kaikille):
+3. **Firestore** → **Rules** (varavaihtoehto clientille):
 
 ```
-match /gigs/{gigId} {
-  allow read: if true;
-  allow write: if request.auth != null;
+match /gigs/{id} {
+  allow read: if resource.data.ownerId == "IE4axMIEIxMDr2wnxNygKnks4DQ2"
+    || (signedIn() && canAccessOwner(resource.data.ownerId));
+  allow create: if signedIn() && createOwnerOk();
+  allow update: if signedIn() && canAccessOwner(resource.data.ownerId) && ownerUnchanged();
+  allow delete: if signedIn() && canAccessOwner(resource.data.ownerId);
 }
 ```
 
-Jos API-avaimella on referrer-rajoituksia Google Cloudissa, lisää myös `*.netlify.app`.
+4. Google Cloud → **APIs & Credentials** → Firebase API key → HTTP referrers → lisää:
+   - `https://harrimuikkula.netlify.app/*`
+   - `https://*.netlify.app/*`
+   - `http://localhost:5173/*`
 
 ### Keikkojen vikansieto ja hälytys
 
 - Kalenteri tallentaa selaimen `localStorage`en viimeisimmän onnistuneen keikkadatan.
-- Jos Firestore-synkronointi epäonnistuu myöhemmin, sivu näyttää automaattisesti tämän viimeisimmän toimineen datan.
-- Discord-hälytys lähtee vain oikeasta synkkivirheestä (ei tyhjästä, mutta onnistuneesta vastauksesta). Hälytys tarkoittaa, että joku on ladannut sivun ja synkronointi epäonnistui hänen selaimessaan.
-- Voit ottaa omistajahälytyksen käyttöön lisäämällä ympäristömuuttujan:
+- Jos synkronointi epäonnistuu, sivu näyttää automaattisesti tämän viimeisimmän toimineen datan.
+- Discord-hälytys lähtee oikeasta synkkivirheestä (cooldown 12h / selain).
 
 ```
 VITE_GIG_SYNC_ALERT_WEBHOOK_URL=https://your-webhook-url
 VITE_GIG_SYNC_ALERT_MENTION=<@123456789012345678>
 ```
 
-Webhookiin lähetetään Discordiin suoraan sopiva `content + embeds` payload, kun synkronointi epäonnistuu (cooldown 6h / selain), jotta et saa spämmiä.
-`VITE_GIG_SYNC_ALERT_MENTION` on valinnainen. Voit käyttää esim. `<@userId>`, `<@&roleId>`, `@here` tai `@everyone`.
+### Kävijäilmoitukset Discordiin
 
-Testausta varten voit simuloida virheen:
-
-```
-VITE_SIMULATE_GIG_SYNC_FAILURE=1
-```
-
-Muista palauttaa arvoon `0` testin jälkeen.
+- Jokainen uusi selainistunto lähettää Discordiin ilmoituksen.
+- Viestissä on juokseva kävijälaskuri (`Kävijöitä yhteensä`).
+- Localhostia ei lasketa (ei spammiä kehityksessä).
 
 ### Yhteydenottolomake
 
 - Ensisijainen kanava: Web3Forms (`VITE_WEB3FORMS_ACCESS_KEY`).
 - **Jokainen** tarjouspyyntö lähetetään myös Discordiin (`VITE_GIG_SYNC_ALERT_WEBHOOK_URL`), jotta lead ei katoa vaikka sähköposti pettäisi.
-- Jos sekä sähköposti että Discord epäonnistuvat, käyttäjälle tarjotaan valmis `mailto:`-linkki.
+- Jos sekä sähköposti että Discord epäonnistuvat, käyttäjälle näytetään ohje lähettää suoraan `harri.muikkula@gmail.com`.
 
 ## GitHub
 
