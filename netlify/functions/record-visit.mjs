@@ -1,4 +1,4 @@
-import { getStore } from '@netlify/blobs'
+import { incrementSiteVisitCount } from './lib/firebaseAdmin.mjs'
 
 function json(statusCode, body) {
   return {
@@ -12,27 +12,48 @@ function json(statusCode, body) {
   }
 }
 
+function getWebhookUrl() {
+  return (
+    process.env.VITE_GIG_SYNC_ALERT_WEBHOOK_URL ||
+    process.env.GIG_SYNC_ALERT_WEBHOOK_URL ||
+    ''
+  ).trim()
+}
+
+function getMention() {
+  return (
+    process.env.VITE_GIG_SYNC_ALERT_MENTION ||
+    process.env.GIG_SYNC_ALERT_MENTION ||
+    ''
+  ).trim()
+}
+
 async function sendDiscordVisitAlert({ totalVisits, pageUrl, referrer, userAgent }) {
-  const webhookUrl = process.env.VITE_GIG_SYNC_ALERT_WEBHOOK_URL
-  if (!webhookUrl) return false
+  const webhookUrl = getWebhookUrl()
+  if (!webhookUrl) {
+    console.warn('record-visit: webhook URL not configured')
+    return false
+  }
 
   const timestamp = new Date().toISOString()
+  const mention = getMention()
+  const countLabel =
+    totalVisits === null ? '— (laskuri ei käytössä)' : String(totalVisits)
+
   const payload = {
     username: 'Kävijäseuranta',
-    content: '👀 Uusi kävijä sivustolla',
+    content: `${mention ? `${mention} ` : ''}👀 Uusi kävijä sivustolla`,
+    allowed_mentions: { parse: ['users', 'roles', 'everyone'] },
     embeds: [
       {
         title: 'Sivustokäynti',
         color: 5793266,
         fields: [
-          { name: 'Kävijöitä yhteensä', value: String(totalVisits), inline: true },
+          { name: 'Kävijöitä yhteensä', value: countLabel, inline: true },
           { name: 'Aika', value: timestamp, inline: true },
           { name: 'Sivu', value: pageUrl || '-' },
           { name: 'Referrer', value: referrer || 'suora / tuntematon' },
-          {
-            name: 'Laite',
-            value: (userAgent || '-').slice(0, 180),
-          },
+          { name: 'Laite', value: (userAgent || '-').slice(0, 180) },
         ],
         footer: { text: 'yrityskoomikko-sivusto • visits' },
         timestamp,
@@ -45,6 +66,10 @@ async function sendDiscordVisitAlert({ totalVisits, pageUrl, referrer, userAgent
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
+
+  if (!response.ok) {
+    console.error('record-visit: Discord webhook failed', response.status)
+  }
   return response.ok
 }
 
@@ -67,20 +92,26 @@ export async function handler(event) {
       // ignore malformed body
     }
 
-    const store = getStore('site-stats')
-    const previous = Number((await store.get('total-visits', { type: 'text' })) || '0')
-    const totalVisits = (Number.isFinite(previous) ? previous : 0) + 1
-    await store.set('total-visits', String(totalVisits))
+    let totalVisits = null
+    try {
+      totalVisits = await incrementSiteVisitCount()
+    } catch (counterError) {
+      console.warn('record-visit: visit counter failed', counterError)
+    }
 
     const userAgent = event.headers['user-agent'] || event.headers['User-Agent'] || ''
-    await sendDiscordVisitAlert({
+    const discordOk = await sendDiscordVisitAlert({
       totalVisits,
       pageUrl,
       referrer,
       userAgent,
     })
 
-    return json(200, { totalVisits })
+    if (!discordOk && !getWebhookUrl()) {
+      return json(503, { error: 'Discord webhook not configured' })
+    }
+
+    return json(200, { ok: true, totalVisits, discord: discordOk })
   } catch (error) {
     console.error('record-visit failed', error)
     return json(500, { error: error?.message || 'Failed to record visit' })

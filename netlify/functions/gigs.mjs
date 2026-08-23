@@ -1,5 +1,4 @@
-import { initializeApp, cert, getApps } from 'firebase-admin/app'
-import { getFirestore } from 'firebase-admin/firestore'
+import { getAdminDb } from './lib/firebaseAdmin.mjs'
 
 function json(statusCode, body) {
   return {
@@ -12,33 +11,6 @@ function json(statusCode, body) {
     },
     body: JSON.stringify(body),
   }
-}
-
-function getServiceAccount() {
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON
-  if (!raw) return null
-  try {
-    return JSON.parse(raw)
-  } catch {
-    throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON')
-  }
-}
-
-function getAdminDb() {
-  const serviceAccount = getServiceAccount()
-  if (!serviceAccount) return null
-
-  if (!getApps().length) {
-    initializeApp({
-      credential: cert(serviceAccount),
-      projectId:
-        serviceAccount.project_id ||
-        process.env.VITE_FIREBASE_PROJECT_ID ||
-        process.env.FIREBASE_PROJECT_ID,
-    })
-  }
-
-  return getFirestore()
 }
 
 function serializeDate(value) {
