@@ -1,22 +1,18 @@
-const DEFAULT_WEBHOOK_URL = import.meta.env.VITE_GIG_SYNC_ALERT_WEBHOOK_URL
-const DEFAULT_MENTION = (import.meta.env.VITE_GIG_SYNC_ALERT_MENTION || '').trim()
-
 /**
- * Send a Discord webhook embed alert.
+ * Send a Discord alert via Netlify function (webhook stays server-side).
  * @returns {Promise<boolean>} true if Discord accepted the message
  */
 export async function sendDiscordAlert({
+  type = 'generic',
   title,
   content,
   fields = [],
   color = 15158332,
   username = 'Sivuston valvonta',
-  webhookUrl = DEFAULT_WEBHOOK_URL,
-  mention = DEFAULT_MENTION,
   cooldownKey = null,
   cooldownMs = 0,
 }) {
-  if (!webhookUrl || typeof window === 'undefined') return false
+  if (typeof window === 'undefined') return false
 
   try {
     if (cooldownKey && cooldownMs > 0) {
@@ -27,36 +23,28 @@ export async function sendDiscordAlert({
       }
     }
 
-    const timestamp = new Date().toISOString()
-    const mentionPrefix = mention ? `${mention} ` : ''
-    const payload = {
-      username,
-      content: `${mentionPrefix}${content}`,
-      allowed_mentions: {
-        parse: ['users', 'roles', 'everyone'],
-      },
-      embeds: [
-        {
-          title,
-          color,
-          fields: fields.map((field) => ({
-            name: field.name,
-            value: String(field.value ?? '-').slice(0, 1024),
-            inline: Boolean(field.inline),
-          })),
-          footer: { text: 'yrityskoomikko-sivusto' },
-          timestamp,
-        },
-      ],
-    }
-
-    const response = await fetch(webhookUrl, {
+    const response = await fetch('/.netlify/functions/discord-alert', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        type,
+        title,
+        content,
+        fields,
+        color,
+        username,
+        host: window.location.hostname || 'unknown',
+      }),
+      keepalive: true,
     })
+
     if (!response.ok) {
-      throw new Error(`Discord webhook failed with status ${response.status}`)
+      throw new Error(`Discord alert function failed with status ${response.status}`)
+    }
+
+    const payload = await response.json().catch(() => ({}))
+    if (payload?.skipped === 'cooldown') {
+      return false
     }
 
     if (cooldownKey) {

@@ -306,6 +306,7 @@ async function alertGigSyncFailure({ primaryError, retryError }) {
     const retryErrorText = String(retryError?.message ?? retryError ?? 'none')
 
     await sendDiscordAlert({
+      type: 'gig-sync',
       username: 'Gig Calendar Monitor',
       title: 'Gig sync failure detected',
       content: '🚨 Keikkasynkronointi epäonnistui',

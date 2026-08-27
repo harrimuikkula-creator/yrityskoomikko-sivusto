@@ -82,12 +82,15 @@ match /gigs/{id} {
 
 - Kalenteri tallentaa selaimen `localStorage`en viimeisimmän onnistuneen keikkadatan.
 - Jos synkronointi epäonnistuu, sivu näyttää automaattisesti tämän viimeisimmän toimineen datan.
-- Discord-hälytys lähtee oikeasta synkkivirheestä (cooldown 12h / selain).
+- Discord-hälytys lähtee Netlify-funktion kautta (`/.netlify/functions/discord-alert`) oikeasta synkkivirheestä (cooldown 12h).
 
 ```
-VITE_GIG_SYNC_ALERT_WEBHOOK_URL=https://your-webhook-url
-VITE_GIG_SYNC_ALERT_MENTION=<@123456789012345678>
+# Netlify Environment variables (server-only, Secret)
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+DISCORD_MENTION=<@123456789012345678>
 ```
+
+Älä käytä `VITE_`-etuliitettä webhookille — se päätyisi julkiseen JavaScript-bundlen.
 
 ### Kävijäilmoitukset Discordiin
 
@@ -98,7 +101,7 @@ VITE_GIG_SYNC_ALERT_MENTION=<@123456789012345678>
 ### Yhteydenottolomake
 
 - Ensisijainen kanava: Web3Forms (`VITE_WEB3FORMS_ACCESS_KEY`).
-- **Jokainen** tarjouspyyntö lähetetään myös Discordiin (`VITE_GIG_SYNC_ALERT_WEBHOOK_URL`), jotta lead ei katoa vaikka sähköposti pettäisi.
+- **Jokainen** tarjouspyyntö lähetetään myös Discordiin (server-side `DISCORD_WEBHOOK_URL`), jotta lead ei katoa vaikka sähköposti pettäisi.
 - Jos sekä sähköposti että Discord epäonnistuvat, käyttäjälle näytetään ohje lähettää suoraan `harri.muikkula@gmail.com`.
 
 ## GitHub

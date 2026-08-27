@@ -1,4 +1,8 @@
 import { incrementVisitCount } from './lib/visitCounter.mjs'
+import {
+  getDiscordWebhookUrl,
+  postDiscordEmbed,
+} from './lib/discordWebhook.mjs'
 
 function json(statusCode, body) {
   return {
@@ -12,65 +16,25 @@ function json(statusCode, body) {
   }
 }
 
-function getWebhookUrl() {
-  return (
-    process.env.VITE_GIG_SYNC_ALERT_WEBHOOK_URL ||
-    process.env.GIG_SYNC_ALERT_WEBHOOK_URL ||
-    ''
-  ).trim()
-}
-
-function getMention() {
-  return (
-    process.env.VITE_GIG_SYNC_ALERT_MENTION ||
-    process.env.GIG_SYNC_ALERT_MENTION ||
-    ''
-  ).trim()
-}
-
 async function sendDiscordVisitAlert({ totalVisits, pageUrl, referrer, userAgent }) {
-  const webhookUrl = getWebhookUrl()
-  if (!webhookUrl) {
-    console.warn('record-visit: webhook URL not configured')
-    return false
-  }
-
   const timestamp = new Date().toISOString()
-  const mention = getMention()
   const countLabel =
     totalVisits === null ? '— (laskuri ei käytössä)' : String(totalVisits)
 
-  const payload = {
+  return postDiscordEmbed({
     username: 'Kävijäseuranta',
-    content: `${mention ? `${mention} ` : ''}👀 Uusi kävijä sivustolla`,
-    allowed_mentions: { parse: ['users', 'roles', 'everyone'] },
-    embeds: [
-      {
-        title: 'Sivustokäynti',
-        color: 5793266,
-        fields: [
-          { name: 'Kävijöitä yhteensä', value: countLabel, inline: true },
-          { name: 'Aika', value: timestamp, inline: true },
-          { name: 'Sivu', value: pageUrl || '-' },
-          { name: 'Referrer', value: referrer || 'suora / tuntematon' },
-          { name: 'Laite', value: (userAgent || '-').slice(0, 180) },
-        ],
-        footer: { text: 'yrityskoomikko-sivusto • visits' },
-        timestamp,
-      },
+    content: '👀 Uusi kävijä sivustolla',
+    title: 'Sivustokäynti',
+    color: 5793266,
+    fields: [
+      { name: 'Kävijöitä yhteensä', value: countLabel, inline: true },
+      { name: 'Aika', value: timestamp, inline: true },
+      { name: 'Sivu', value: pageUrl || '-' },
+      { name: 'Referrer', value: referrer || 'suora / tuntematon' },
+      { name: 'Laite', value: (userAgent || '-').slice(0, 180) },
     ],
-  }
-
-  const response = await fetch(webhookUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    footerText: 'yrityskoomikko-sivusto • visits',
   })
-
-  if (!response.ok) {
-    console.error('record-visit: Discord webhook failed', response.status)
-  }
-  return response.ok
 }
 
 export async function handler(event) {
@@ -107,7 +71,7 @@ export async function handler(event) {
       userAgent,
     })
 
-    if (!discordOk && !getWebhookUrl()) {
+    if (!discordOk && !getDiscordWebhookUrl()) {
       return json(503, { error: 'Discord webhook not configured' })
     }
 

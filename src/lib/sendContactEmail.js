@@ -76,6 +76,7 @@ async function sendViaWeb3Forms({
 
 async function notifyDiscordContact({ fields, emailOk, emailError }) {
   return sendDiscordAlert({
+    type: 'contact',
     username: 'Yhteydenottolomake',
     title: emailOk
       ? 'Uusi keikkakysely (sähköposti + Discord)'
