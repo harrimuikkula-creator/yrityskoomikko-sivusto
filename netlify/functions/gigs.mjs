@@ -54,19 +54,24 @@ export async function handler(event) {
       .orderBy('date', 'asc')
       .get()
 
-    const gigs = snapshot.docs.map((doc) => {
-      const data = doc.data()
-      return {
-        id: doc.id,
-        date: serializeDate(data.date),
-        eventType: data.eventType ?? 'public',
-        festivalName: data.festivalName ?? '',
-        venue: data.venue ?? '',
-        clubName: data.clubName ?? '',
-        city: data.city ?? '',
-        ticketUrl: data.ticketUrl ?? '',
-      }
-    })
+    // StandUppApp: bookingStatus "applied" = Haettu (ei vielä vahvistunut) → älä näytä sivulla.
+    const gigs = snapshot.docs
+      .map((doc) => {
+        const data = doc.data()
+        return {
+          id: doc.id,
+          date: serializeDate(data.date),
+          eventType: data.eventType ?? 'public',
+          festivalName: data.festivalName ?? '',
+          venue: data.venue ?? '',
+          clubName: data.clubName ?? '',
+          city: data.city ?? '',
+          ticketUrl: data.ticketUrl ?? '',
+          bookingStatus: data.bookingStatus === 'applied' ? 'applied' : 'confirmed',
+        }
+      })
+      .filter((gig) => gig.bookingStatus !== 'applied')
+      .map(({ bookingStatus: _bookingStatus, ...gig }) => gig)
 
     return json(200, { gigs, source: 'admin', count: gigs.length })
   } catch (error) {

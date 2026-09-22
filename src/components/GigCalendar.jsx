@@ -137,6 +137,11 @@ function formatCity(rawCity) {
   return `${city}, ${country}`
 }
 
+/** StandUppApp: bookingStatus "applied" = Haettu — ei näytetä kotisivun kalenterissa. */
+function isConfirmedBooking(bookingStatus) {
+  return bookingStatus !== 'applied'
+}
+
 function buildGigDisplayFields({
   eventType: rawEventType,
   festivalName: rawFestivalName,
@@ -179,6 +184,7 @@ function buildGigDisplayFields({
 
 function normalizeFirestoreGig(doc, dateLocale, privateLabel) {
   const data = doc.data()
+  if (!isConfirmedBooking(data.bookingStatus)) return null
 
   return {
     id: doc.id,
@@ -197,6 +203,8 @@ function normalizeFirestoreGig(doc, dateLocale, privateLabel) {
 }
 
 function normalizeCachedGig(gig, dateLocale, privateLabel) {
+  if (!isConfirmedBooking(gig.bookingStatus)) return null
+
   return {
     id: gig.id,
     date: formatDate(gig.date, dateLocale),
@@ -220,7 +228,9 @@ function readCachedGigs(dateLocale, privateLabel) {
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
-    return parsed.map((gig) => normalizeCachedGig(gig, dateLocale, privateLabel))
+    return parsed
+      .map((gig) => normalizeCachedGig(gig, dateLocale, privateLabel))
+      .filter(Boolean)
   } catch (error) {
     console.warn('Failed to read cached gigs snapshot.', error)
     return []
@@ -242,16 +252,19 @@ function hasCachedGigs() {
 function writeCachedGigRecords(records) {
   if (typeof window === 'undefined') return
   try {
-    const serializable = records.map((gig) => ({
-      id: gig.id,
-      date: gig.date ?? '',
-      eventType: gig.eventType ?? 'public',
-      festivalName: gig.festivalName ?? '',
-      venue: gig.venue ?? '',
-      clubName: gig.clubName ?? '',
-      city: gig.city ?? '',
-      ticketUrl: gig.ticketUrl ?? '',
-    }))
+    const serializable = records
+      .filter((gig) => isConfirmedBooking(gig.bookingStatus))
+      .map((gig) => ({
+        id: gig.id,
+        date: gig.date ?? '',
+        eventType: gig.eventType ?? 'public',
+        festivalName: gig.festivalName ?? '',
+        venue: gig.venue ?? '',
+        clubName: gig.clubName ?? '',
+        city: gig.city ?? '',
+        ticketUrl: gig.ticketUrl ?? '',
+        bookingStatus: 'confirmed',
+      }))
     window.localStorage.setItem(GIG_CACHE_KEY, JSON.stringify(serializable))
   } catch (error) {
     console.warn('Failed to write cached gigs snapshot.', error)
@@ -260,23 +273,27 @@ function writeCachedGigRecords(records) {
 
 function writeCachedGigs(docs) {
   writeCachedGigRecords(
-    docs.map((doc) => {
-      const data = doc.data()
-      let cacheDate = data.date
-      if (typeof data.date?.toDate === 'function') {
-        cacheDate = data.date.toDate().toISOString()
-      }
-      return {
-        id: doc.id,
-        date: cacheDate,
-        eventType: data.eventType ?? 'public',
-        festivalName: data.festivalName ?? '',
-        venue: data.venue ?? '',
-        clubName: data.clubName ?? '',
-        city: data.city ?? '',
-        ticketUrl: data.ticketUrl ?? '',
-      }
-    }),
+    docs
+      .map((doc) => {
+        const data = doc.data()
+        if (!isConfirmedBooking(data.bookingStatus)) return null
+        let cacheDate = data.date
+        if (typeof data.date?.toDate === 'function') {
+          cacheDate = data.date.toDate().toISOString()
+        }
+        return {
+          id: doc.id,
+          date: cacheDate,
+          eventType: data.eventType ?? 'public',
+          festivalName: data.festivalName ?? '',
+          venue: data.venue ?? '',
+          clubName: data.clubName ?? '',
+          city: data.city ?? '',
+          ticketUrl: data.ticketUrl ?? '',
+          bookingStatus: 'confirmed',
+        }
+      })
+      .filter(Boolean),
   )
 }
 
@@ -292,7 +309,9 @@ async function fetchGigsFromNetlifyFunction(dateLocale, privateLabel) {
     throw new Error('Netlify gigs function returned invalid payload')
   }
   writeCachedGigRecords(payload.gigs)
-  return payload.gigs.map((gig) => normalizeCachedGig(gig, dateLocale, privateLabel))
+  return payload.gigs
+    .map((gig) => normalizeCachedGig(gig, dateLocale, privateLabel))
+    .filter(Boolean)
 }
 
 async function alertGigSyncFailure({ primaryError, retryError }) {
@@ -851,11 +870,11 @@ export default function GigCalendar() {
         snapshot = await getDocs(fallbackQuery)
       }
 
-      const normalizedGigs = snapshot.docs.map((doc) =>
-        normalizeFirestoreGig(doc, calendar.dateLocale, calendar.private),
-      )
+      const normalizedGigs = snapshot.docs
+        .map((doc) => normalizeFirestoreGig(doc, calendar.dateLocale, calendar.private))
+        .filter(Boolean)
 
-      if (snapshot.docs.length > 0) {
+      if (normalizedGigs.length > 0) {
         writeCachedGigs(snapshot.docs)
       }
 
