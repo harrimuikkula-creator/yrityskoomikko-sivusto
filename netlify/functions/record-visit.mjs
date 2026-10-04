@@ -3,6 +3,7 @@ import {
   getDiscordWebhookUrl,
   postDiscordEmbed,
 } from './lib/discordWebhook.mjs'
+import { buildVisitAlert, classifyVisitor, readGeo } from './lib/visitSummary.mjs'
 
 function json(statusCode, body) {
   return {
@@ -16,28 +17,32 @@ function json(statusCode, body) {
   }
 }
 
-async function sendDiscordVisitAlert({ totalVisits, pageUrl, referrer, userAgent }) {
-  const timestamp = new Date().toISOString()
-  const countLabel =
-    totalVisits === null ? '— (laskuri ei käytössä)' : String(totalVisits)
-
-  return postDiscordEmbed({
-    username: 'Kävijäseuranta',
-    content: '👀 Uusi kävijä sivustolla',
-    title: 'Sivustokäynti',
-    color: 5793266,
-    fields: [
-      { name: 'Kävijöitä yhteensä', value: countLabel, inline: true },
-      { name: 'Aika', value: timestamp, inline: true },
-      { name: 'Sivu', value: pageUrl || '-' },
-      { name: 'Referrer', value: referrer || 'suora / tuntematon' },
-      { name: 'Laite', value: (userAgent || '-').slice(0, 180) },
-    ],
-    footerText: 'yrityskoomikko-sivusto • visits',
-  })
+function header(headers, name) {
+  return headers[name] || headers[name.toLowerCase()] || ''
 }
 
-export async function handler(event) {
+function readClient(event) {
+  let parsed = {}
+  try {
+    parsed = JSON.parse(event.body || '{}')
+  } catch {
+    parsed = {}
+  }
+
+  const siteLanguage = parsed.siteLanguage === 'en' ? 'en' : parsed.siteLanguage === 'fi' ? 'fi' : ''
+  const screen = String(parsed.screen || '').slice(0, 20)
+
+  return {
+    pageUrl: String(parsed.pageUrl || '').slice(0, 500),
+    referrer: String(parsed.referrer || '').slice(0, 500),
+    siteLanguage,
+    screen,
+    returning: parsed.returning === true,
+    automation: parsed.automation === true,
+  }
+}
+
+export async function handler(event, context) {
   if (event.httpMethod === 'OPTIONS') {
     return json(204, {})
   }
@@ -46,36 +51,44 @@ export async function handler(event) {
   }
 
   try {
-    let pageUrl = ''
-    let referrer = ''
-    try {
-      const parsed = JSON.parse(event.body || '{}')
-      pageUrl = String(parsed.pageUrl || '').slice(0, 500)
-      referrer = String(parsed.referrer || '').slice(0, 500)
-    } catch {
-      // ignore malformed body
-    }
+    const client = readClient(event)
+    const headers = event.headers || {}
+    const userAgent = header(headers, 'user-agent')
+    const visitor = classifyVisitor({
+      userAgent,
+      automation: client.automation,
+    })
 
     let totalVisits = null
-    try {
-      totalVisits = await incrementVisitCount()
-    } catch (counterError) {
-      console.warn('record-visit: visit counter failed', counterError)
+    if (!visitor.bot) {
+      try {
+        totalVisits = await incrementVisitCount()
+      } catch (counterError) {
+        console.warn('record-visit: visit counter failed', counterError)
+      }
     }
 
-    const userAgent = event.headers['user-agent'] || event.headers['User-Agent'] || ''
-    const discordOk = await sendDiscordVisitAlert({
+    const alert = buildVisitAlert({
       totalVisits,
-      pageUrl,
-      referrer,
+      pageUrl: client.pageUrl,
+      referrer: client.referrer,
+      siteLanguage: client.siteLanguage,
+      screen: client.screen,
+      returning: client.returning,
       userAgent,
+      automation: client.automation,
+      acceptLanguage: header(headers, 'accept-language'),
+      headers,
+      geo: readGeo(context, headers),
     })
+
+    const discordOk = await postDiscordEmbed(alert)
 
     if (!discordOk && !getDiscordWebhookUrl()) {
       return json(503, { error: 'Discord webhook not configured' })
     }
 
-    return json(200, { ok: true, totalVisits, discord: discordOk })
+    return json(200, { ok: true, totalVisits, bot: visitor.bot, discord: discordOk })
   } catch (error) {
     console.error('record-visit failed', error)
     return json(500, { error: error?.message || 'Failed to record visit' })
