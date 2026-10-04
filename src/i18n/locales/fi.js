@@ -28,6 +28,9 @@ const fi = {
     phone: 'Puhelin',
     sendAnotherMessage: 'Lähetä uusi viesti',
     allRightsReserved: 'Kaikki oikeudet pidätetään.',
+    privacyNotice:
+      'Tietosuoja: Kerään anonyymia tilastotietoa sivuston kävijämääristä (sijainti, laite ja tuloreitti).',
+    privacyNoticeBold: 'Tietoja ei käytetä mainontaan eikä luovuteta eteenpäin.',
     promoImage: 'Promokuva',
     promoImageHint:
       'Lisää kuva asettamalla hero.imageSrc tiedostossa siteContent.js',

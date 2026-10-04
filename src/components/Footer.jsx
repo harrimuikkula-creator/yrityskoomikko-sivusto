@@ -27,6 +27,10 @@ export default function Footer() {
           &copy; {year} {brand.name}. {common.allRightsReserved}
         </p>
       </div>
+      <p className="mx-auto mt-6 max-w-content text-[10px] leading-relaxed text-olive-500">
+        {common.privacyNotice}{' '}
+        <strong className="font-semibold text-olive-300">{common.privacyNoticeBold}</strong>
+      </p>
     </footer>
   )
 }

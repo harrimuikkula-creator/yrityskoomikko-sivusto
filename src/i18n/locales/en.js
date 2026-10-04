@@ -28,6 +28,9 @@ const en = {
     phone: 'Phone',
     sendAnotherMessage: 'Send another message',
     allRightsReserved: 'All rights reserved.',
+    privacyNotice:
+      'Privacy: I collect anonymous statistics on site visits (location, device and how you arrived).',
+    privacyNoticeBold: 'Data is not used for advertising and is not shared onward.',
     promoImage: 'Promo photo',
     promoImageHint:
       'Add an image by setting hero.imageSrc in the locale content file.',
