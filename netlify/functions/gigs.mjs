@@ -1,4 +1,5 @@
 import { getAdminDb } from './lib/firebaseAdmin.mjs'
+import { PUBLIC_CALENDAR_COLLECTION, toPublicGigRecord } from '../../src/lib/publicCalendarGig.js'
 
 function json(statusCode, body) {
   return {
@@ -7,19 +8,10 @@ function json(statusCode, body) {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Content-Type',
-      'Cache-Control': 'public, max-age=60',
+      'Cache-Control': 'no-store',
     },
     body: JSON.stringify(body),
   }
-}
-
-function serializeDate(value) {
-  if (!value) return null
-  if (typeof value.toDate === 'function') {
-    return value.toDate().toISOString()
-  }
-  if (value instanceof Date) return value.toISOString()
-  return value
 }
 
 export async function handler(event) {
@@ -49,31 +41,15 @@ export async function handler(event) {
     }
 
     const snapshot = await db
-      .collection('gigs')
+      .collection(PUBLIC_CALENDAR_COLLECTION)
       .where('ownerId', '==', ownerId)
-      .orderBy('date', 'asc')
       .get()
 
-    // StandUppApp: bookingStatus "applied" = Haettu (ei vielä vahvistunut) → älä näytä sivulla.
     const gigs = snapshot.docs
-      .map((doc) => {
-        const data = doc.data()
-        return {
-          id: doc.id,
-          date: serializeDate(data.date),
-          eventType: data.eventType ?? 'public',
-          festivalName: data.festivalName ?? '',
-          venue: data.venue ?? '',
-          clubName: data.clubName ?? '',
-          city: data.city ?? '',
-          ticketUrl: data.ticketUrl ?? '',
-          bookingStatus: data.bookingStatus === 'applied' ? 'applied' : 'confirmed',
-        }
-      })
-      .filter((gig) => gig.bookingStatus !== 'applied')
-      .map(({ bookingStatus: _bookingStatus, ...gig }) => gig)
+      .map((doc) => toPublicGigRecord(doc.id, doc.data()))
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)))
 
-    return json(200, { gigs, source: 'admin', count: gigs.length })
+    return json(200, { gigs, source: 'publicCalendarGigs', count: gigs.length })
   } catch (error) {
     console.error('gigs function failed', error)
     return json(500, {

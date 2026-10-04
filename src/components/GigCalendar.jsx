@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { collection, getDocs, query, orderBy, where } from 'firebase/firestore'
+import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import { useLanguage } from '../i18n/LanguageContext'
-import { db, ensureFirebaseSession, isFirebaseConfigured } from '../lib/firebase'
+import { db } from '../lib/firebase'
+import {
+  PUBLIC_CALENDAR_COLLECTION,
+  buildPublicGigView,
+  toPublicGigRecord,
+} from '../lib/publicCalendarGig'
 import { sendDiscordAlert } from '../lib/discordAlert'
 import SectionHeading from './ui/SectionHeading'
 
-const GIG_CACHE_KEY = 'gigCalendar:lastSuccessfulSnapshot:v1'
+const GIG_CACHE_KEY = 'gigCalendar:lastSuccessfulSnapshot:v2'
 const GIG_SYNC_ALERT_KEY = 'gigCalendar:lastSyncAlertAt'
 const GIG_SYNC_ALERT_COOLDOWN_MS = 12 * 60 * 60 * 1000
 const GIG_OWNER_UID = (import.meta.env.VITE_FIREBASE_OWNER_UID || '').trim()
@@ -29,6 +34,16 @@ function formatDate(dateValue, dateLocale) {
 
   const asText = String(dateValue)
   if (/^\d{2}\.\d{2}\.\d{4}$/.test(asText)) return asText
+
+  const isoDateMatch = asText.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (isoDateMatch) {
+    const date = new Date(
+      Number(isoDateMatch[1]),
+      Number(isoDateMatch[2]) - 1,
+      Number(isoDateMatch[3]),
+    )
+    return date.toLocaleDateString(dateLocale)
+  }
 
   const date = new Date(asText)
   if (Number.isNaN(date.getTime())) return asText
@@ -111,193 +126,49 @@ function TicketLink({ ticketUrl, label, className = '' }) {
   )
 }
 
-function formatVenueName(venue, clubName) {
-  const v = String(venue ?? '').trim()
-  const c = String(clubName ?? '').trim()
-  if (v && c && v.toLowerCase() !== c.toLowerCase()) return `${v} — ${c}`
-  return v || c || '-'
+function formatStartTime(startTime, dateLocale) {
+  if (!startTime) return null
+  return String(dateLocale).toLowerCase().startsWith('fi') ? `klo ${startTime}` : startTime
 }
 
-const FINLAND_COUNTRY_ALIASES = new Set(['finland', 'suomi', 'fi', 'fin'])
-
-function formatCity(rawCity) {
-  const trimmed = String(rawCity ?? '').trim()
-  if (!trimmed || trimmed === '-') return '-'
-
-  const parts = trimmed.split(',').map((part) => part.trim()).filter(Boolean)
-  if (parts.length === 1) return parts[0]
-
-  const [city, ...countryParts] = parts
-  const country = countryParts.join(', ')
-
-  if (FINLAND_COUNTRY_ALIASES.has(country.toLowerCase())) {
-    return city
-  }
-
-  return `${city}, ${country}`
-}
-
-/** StandUppApp: bookingStatus "applied" = Haettu — ei näytetä kotisivun kalenterissa. */
-function isConfirmedBooking(bookingStatus) {
-  return bookingStatus !== 'applied'
-}
-
-function buildGigDisplayFields({
-  eventType: rawEventType,
-  festivalName: rawFestivalName,
-  venue,
-  clubName,
-  city: rawCity,
-  ticketUrl: rawTicketUrl,
-  privateLabel,
-}) {
-  const eventType = rawEventType === 'private' ? 'private' : 'public'
-  const isPrivate = eventType === 'private'
-  const festivalName = String(rawFestivalName ?? '').trim() || null
-  const city = formatCity(rawCity)
-  const venueName = formatVenueName(venue, clubName)
-
-  let displayPlace = venueName
-  let displaySubtitle = null
-
-  if (isPrivate) {
-    displayPlace = privateLabel
-  } else if (festivalName) {
-    displayPlace = festivalName
-    if (venueName !== '-') {
-      displaySubtitle = venueName
-    }
-  }
-
+function normalizeGigRecord(record, dateLocale) {
+  const safe = toPublicGigRecord(record?.id, record)
+  if (!safe.id && !safe.date) return null
+  const view = buildPublicGigView(safe)
   return {
-    eventType,
-    isPrivate,
-    isFestival: Boolean(festivalName),
-    festivalName,
-    place: venueName,
-    displayPlace,
-    displaySubtitle,
-    city,
-    ticketUrl: isPrivate ? null : normalizeTicketUrl(rawTicketUrl),
+    id: safe.id,
+    date: formatDate(safe.date, dateLocale),
+    parsedDate: parseGigDate(safe.date),
+    ...view,
+    ticketUrl: view.ticketUrl ? normalizeTicketUrl(view.ticketUrl) : null,
   }
 }
 
-function normalizeFirestoreGig(doc, dateLocale, privateLabel) {
-  const data = doc.data()
-  if (!isConfirmedBooking(data.bookingStatus)) return null
-
-  return {
-    id: doc.id,
-    date: formatDate(data.date, dateLocale),
-    parsedDate: parseGigDate(data.date),
-    ...buildGigDisplayFields({
-      eventType: data.eventType,
-      festivalName: data.festivalName,
-      venue: data.venue,
-      clubName: data.clubName,
-      city: data.city,
-      ticketUrl: data.ticketUrl,
-      privateLabel,
-    }),
-  }
-}
-
-function normalizeCachedGig(gig, dateLocale, privateLabel) {
-  if (!isConfirmedBooking(gig.bookingStatus)) return null
-
-  return {
-    id: gig.id,
-    date: formatDate(gig.date, dateLocale),
-    parsedDate: parseGigDate(gig.date),
-    ...buildGigDisplayFields({
-      eventType: gig.eventType,
-      festivalName: gig.festivalName,
-      venue: gig.venue,
-      clubName: gig.clubName,
-      city: gig.city,
-      ticketUrl: gig.ticketUrl,
-      privateLabel,
-    }),
-  }
-}
-
-function readCachedGigs(dateLocale, privateLabel) {
+function readCachedGigs(dateLocale) {
   if (typeof window === 'undefined') return []
   try {
     const raw = window.localStorage.getItem(GIG_CACHE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
-    return parsed
-      .map((gig) => normalizeCachedGig(gig, dateLocale, privateLabel))
-      .filter(Boolean)
+    return parsed.map((gig) => normalizeGigRecord(gig, dateLocale)).filter(Boolean)
   } catch (error) {
     console.warn('Failed to read cached gigs snapshot.', error)
     return []
   }
 }
 
-function hasCachedGigs() {
-  if (typeof window === 'undefined') return false
-  try {
-    const raw = window.localStorage.getItem(GIG_CACHE_KEY)
-    if (!raw) return false
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) && parsed.length > 0
-  } catch {
-    return false
-  }
-}
-
 function writeCachedGigRecords(records) {
   if (typeof window === 'undefined') return
   try {
-    const serializable = records
-      .filter((gig) => isConfirmedBooking(gig.bookingStatus))
-      .map((gig) => ({
-        id: gig.id,
-        date: gig.date ?? '',
-        eventType: gig.eventType ?? 'public',
-        festivalName: gig.festivalName ?? '',
-        venue: gig.venue ?? '',
-        clubName: gig.clubName ?? '',
-        city: gig.city ?? '',
-        ticketUrl: gig.ticketUrl ?? '',
-        bookingStatus: 'confirmed',
-      }))
+    const serializable = records.map((record) => toPublicGigRecord(record.id, record))
     window.localStorage.setItem(GIG_CACHE_KEY, JSON.stringify(serializable))
   } catch (error) {
     console.warn('Failed to write cached gigs snapshot.', error)
   }
 }
 
-function writeCachedGigs(docs) {
-  writeCachedGigRecords(
-    docs
-      .map((doc) => {
-        const data = doc.data()
-        if (!isConfirmedBooking(data.bookingStatus)) return null
-        let cacheDate = data.date
-        if (typeof data.date?.toDate === 'function') {
-          cacheDate = data.date.toDate().toISOString()
-        }
-        return {
-          id: doc.id,
-          date: cacheDate,
-          eventType: data.eventType ?? 'public',
-          festivalName: data.festivalName ?? '',
-          venue: data.venue ?? '',
-          clubName: data.clubName ?? '',
-          city: data.city ?? '',
-          ticketUrl: data.ticketUrl ?? '',
-          bookingStatus: 'confirmed',
-        }
-      })
-      .filter(Boolean),
-  )
-}
-
-async function fetchGigsFromNetlifyFunction(dateLocale, privateLabel) {
+async function fetchGigsFromNetlifyFunction(dateLocale) {
   const response = await fetch('/.netlify/functions/gigs', {
     headers: { Accept: 'application/json' },
   })
@@ -308,10 +179,9 @@ async function fetchGigsFromNetlifyFunction(dateLocale, privateLabel) {
   if (!Array.isArray(payload?.gigs)) {
     throw new Error('Netlify gigs function returned invalid payload')
   }
-  writeCachedGigRecords(payload.gigs)
-  return payload.gigs
-    .map((gig) => normalizeCachedGig(gig, dateLocale, privateLabel))
-    .filter(Boolean)
+  const records = payload.gigs.map((gig) => toPublicGigRecord(gig.id, gig))
+  writeCachedGigRecords(records)
+  return records.map((gig) => normalizeGigRecord(gig, dateLocale)).filter(Boolean)
 }
 
 async function alertGigSyncFailure({ primaryError, retryError }) {
@@ -365,9 +235,10 @@ function CityBadge({ city }) {
 }
 
 function GigCalendarEntry({ gig, calendar, compact = false }) {
-  const hasCity = gig.city && gig.city !== '-'
-  const placeLabel = gig.isPrivate
-    ? calendar.event
+  const hasCity = gig.showCityColumn && gig.city && gig.city !== '-'
+  const timeLabel = formatStartTime(gig.startTime, calendar.dateLocale)
+  const placeLabel = gig.detailsHidden
+    ? calendar.city
     : gig.festivalName
       ? calendar.festival
       : calendar.venue
@@ -386,6 +257,11 @@ function GigCalendarEntry({ gig, calendar, compact = false }) {
         {gig.displaySubtitle && (
           <span className="block truncate text-[10px] leading-tight text-olive-400 sm:text-xs">
             {gig.displaySubtitle}
+          </span>
+        )}
+        {timeLabel && (
+          <span className="block truncate text-[10px] leading-tight text-olive-400 sm:text-xs">
+            {timeLabel}
           </span>
         )}
         {hasCity && (
@@ -407,15 +283,18 @@ function GigCalendarEntry({ gig, calendar, compact = false }) {
         {gig.displaySubtitle && (
           <p className="mt-1 text-sm text-cream-muted">{gig.displaySubtitle}</p>
         )}
+        {timeLabel && <p className="mt-1 text-sm text-cream-muted">{timeLabel}</p>}
       </div>
-      <div className="sm:text-right">
-        <span className="text-xs font-semibold uppercase tracking-wider text-olive-400">
-          {calendar.city}
-        </span>
-        <div className="mt-1 sm:flex sm:justify-end">
-          <CityBadge city={gig.city} />
+      {hasCity && (
+        <div className="sm:text-right">
+          <span className="text-xs font-semibold uppercase tracking-wider text-olive-400">
+            {calendar.city}
+          </span>
+          <div className="mt-1 sm:flex sm:justify-end">
+            <CityBadge city={gig.city} />
+          </div>
         </div>
-      </div>
+      )}
       {gig.ticketUrl && (
         <div className="sm:col-span-2">
           <span className="text-xs font-semibold uppercase tracking-wider text-olive-400">
@@ -466,7 +345,8 @@ function ViewToggle({ view, onChange, calendar }) {
 }
 
 function GigListRow({ gig, calendar }) {
-  const hasCity = gig.city && gig.city !== '-'
+  const hasCity = gig.showCityColumn && gig.city && gig.city !== '-'
+  const timeLabel = formatStartTime(gig.startTime, calendar.dateLocale)
 
   return (
     <li className="grid gap-1.5 px-4 py-2.5 transition-colors hover:bg-olive-900/40 sm:grid-cols-[7.5rem_1fr_auto] sm:items-center sm:gap-3 md:px-5">
@@ -483,6 +363,7 @@ function GigListRow({ gig, calendar }) {
         {gig.displaySubtitle && (
           <p className="text-xs leading-snug text-cream-muted">{gig.displaySubtitle}</p>
         )}
+        {timeLabel && <p className="text-xs leading-snug text-olive-400">{timeLabel}</p>}
         {hasCity && (
           <p className="mt-0.5 text-xs text-olive-400 sm:hidden">{gig.city}</p>
         )}
@@ -796,12 +677,9 @@ function GigLoadingState({ label }) {
 export default function GigCalendar() {
   const { content } = useLanguage()
   const { calendar } = content
-  const [gigs, setGigs] = useState(() =>
-    readCachedGigs(calendar.dateLocale, calendar.private),
-  )
+  const [gigs, setGigs] = useState(() => readCachedGigs(calendar.dateLocale))
   const [isLoading, setIsLoading] = useState(true)
   const [syncFailed, setSyncFailed] = useState(false)
-  const [, setConfigMissing] = useState(!isFirebaseConfigured)
   const [view, setView] = useState('list')
 
   const today = new Date()
@@ -848,113 +726,85 @@ export default function GigCalendar() {
   )
 
   useEffect(() => {
-    const fetchFirestoreGigs = async () => {
-      if (SIMULATE_GIG_SYNC_FAILURE) {
-        throw new Error('Simulated gig sync failure (VITE_SIMULATE_GIG_SYNC_FAILURE=1)')
-      }
-      if (!GIG_OWNER_UID) {
-        throw new Error('VITE_FIREBASE_OWNER_UID is missing')
-      }
+    let unsubscribe = () => {}
+    let cancelled = false
 
-      const constraints = [where('ownerId', '==', GIG_OWNER_UID)]
-      let snapshot
-      try {
-        const gigsQuery = query(collection(db, 'gigs'), ...constraints, orderBy('date', 'asc'))
-        snapshot = await getDocs(gigsQuery)
-      } catch (error) {
-        if (error?.code !== 'failed-precondition') {
-          throw error
-        }
-        console.warn('Missing gigs index for ownerId+date. Falling back to unordered query.')
-        const fallbackQuery = query(collection(db, 'gigs'), ...constraints)
-        snapshot = await getDocs(fallbackQuery)
-      }
-
-      const normalizedGigs = snapshot.docs
-        .map((doc) => normalizeFirestoreGig(doc, calendar.dateLocale, calendar.private))
-        .filter(Boolean)
-
-      if (normalizedGigs.length > 0) {
-        writeCachedGigs(snapshot.docs)
-      }
-
-      return normalizedGigs
+    const applyRecords = (records) => {
+      writeCachedGigRecords(records)
+      setGigs(
+        records.map((record) => normalizeGigRecord(record, calendar.dateLocale)).filter(Boolean),
+      )
+      setSyncFailed(false)
     }
 
-    const loadGigs = async () => {
-      if (!db && !GIG_OWNER_UID) {
-        setConfigMissing(true)
-        setSyncFailed(false)
-        setIsLoading(false)
-        return
-      }
+    const fail = (primaryError, retryError) => {
+      const cachedGigs = readCachedGigs(calendar.dateLocale)
+      if (cachedGigs.length > 0) setGigs(cachedGigs)
+      setSyncFailed(true)
+      setIsLoading(false)
+      console.warn('Gig sync failed, using fallback data.', { primaryError, retryError })
+      alertGigSyncFailure({ primaryError, retryError })
+    }
 
-      setConfigMissing(false)
-      setIsLoading(true)
+    const loadFromNetlify = async () => {
+      const apiGigs = await fetchGigsFromNetlifyFunction(calendar.dateLocale)
+      if (cancelled) return
+      setGigs(apiGigs)
+      setSyncFailed(false)
+    }
 
-      try {
-        // Prefer Netlify Admin function (bypasses broken client Firestore rules / API key referrer blocks).
-        try {
-          const apiGigs = await fetchGigsFromNetlifyFunction(
-            calendar.dateLocale,
-            calendar.private,
-          )
-          setGigs(apiGigs)
-          setSyncFailed(false)
-          return
-        } catch (apiError) {
-          console.warn('Netlify gigs function unavailable, falling back to Firestore client.', apiError)
-        }
+    if (SIMULATE_GIG_SYNC_FAILURE) {
+      fail(new Error('Simulated gig sync failure (VITE_SIMULATE_GIG_SYNC_FAILURE=1)'))
+      return undefined
+    }
 
-        if (!db) {
-          throw new Error('Firestore client is not configured')
-        }
+    if (!GIG_OWNER_UID) {
+      fail(new Error('VITE_FIREBASE_OWNER_UID is missing'))
+      return undefined
+    }
 
-        const fetchedGigs = await fetchFirestoreGigs()
-        // Successful empty response is valid (no upcoming docs). Keep cache if present
-        // for UX, but do not treat it as a sync failure / Discord alert.
-        if (fetchedGigs.length === 0 && hasCachedGigs()) {
-          const cachedGigs = readCachedGigs(calendar.dateLocale, calendar.private)
-          if (cachedGigs.length > 0) {
-            setGigs(cachedGigs)
-            setSyncFailed(false)
-            return
-          }
-        }
-
-        setGigs(fetchedGigs)
-        setSyncFailed(false)
-      } catch (error) {
-        try {
-          await ensureFirebaseSession()
-          const fetchedGigs = await fetchFirestoreGigs()
-          if (fetchedGigs.length === 0 && hasCachedGigs()) {
-            const cachedGigs = readCachedGigs(calendar.dateLocale, calendar.private)
-            if (cachedGigs.length > 0) {
-              setGigs(cachedGigs)
-              setSyncFailed(false)
-              return
-            }
-          }
-
-          setGigs(fetchedGigs)
-          setSyncFailed(false)
-        } catch (authError) {
-          const cachedGigs = readCachedGigs(calendar.dateLocale, calendar.private)
-          if (cachedGigs.length > 0) {
-            setGigs(cachedGigs)
-          }
-          setSyncFailed(true)
-          console.warn('Gig sync failed, using fallback data.', { error, authError })
-          alertGigSyncFailure({ primaryError: error, retryError: authError })
-        }
-      } finally {
-        setIsLoading(false)
+    if (!db) {
+      loadFromNetlify()
+        .catch((error) => {
+          if (!cancelled) fail(error)
+        })
+        .finally(() => {
+          if (!cancelled) setIsLoading(false)
+        })
+      return () => {
+        cancelled = true
       }
     }
 
-    loadGigs()
-  }, [calendar.dateLocale, calendar.private])
+    const gigsQuery = query(
+      collection(db, PUBLIC_CALENDAR_COLLECTION),
+      where('ownerId', '==', GIG_OWNER_UID),
+    )
+
+    unsubscribe = onSnapshot(
+      gigsQuery,
+      (snapshot) => {
+        if (cancelled) return
+        applyRecords(snapshot.docs.map((doc) => toPublicGigRecord(doc.id, doc.data())))
+        setIsLoading(false)
+      },
+      (error) => {
+        console.warn('Public calendar listener failed, trying Netlify function.', error)
+        loadFromNetlify()
+          .catch((apiError) => {
+            if (!cancelled) fail(error, apiError)
+          })
+          .finally(() => {
+            if (!cancelled) setIsLoading(false)
+          })
+      },
+    )
+
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
+  }, [calendar.dateLocale])
 
   const isEmpty = upcomingGigs.length === 0
   const showLoading = isLoading && isEmpty

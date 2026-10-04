@@ -222,7 +222,7 @@ const en = {
     configMissing:
       'Firebase is not configured for production. Add VITE_FIREBASE_* variables in Netlify and redeploy (Clear cache and deploy).',
     syncFailed:
-      'Gig sync failed. Check: Netlify env vars, Firebase Authorized domains (netlify.app), Anonymous sign-in enabled, and Firestore rules for the gigs collection.',
+      'Gig sync failed. Check the Firebase connection and that the publicCalendarGigs collection is publicly readable.',
     unplacedGigs:
       'Some gigs could not be placed on the calendar — see the list view.',
     prevMonth: 'Previous month',

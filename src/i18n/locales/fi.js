@@ -222,7 +222,7 @@ const fi = {
     configMissing:
       'Firebase ei ole kytketty tuotantoon. Lisää VITE_FIREBASE_*-muuttujat Netlifyyn ja tee uusi deploy (Clear cache and deploy).',
     syncFailed:
-      'Keikkojen synkronointi ei onnistunut. Tarkista: Netlify-ympäristömuuttujat, Firebase Authorized domains (netlify.app), anonyymi kirjautuminen päällä ja Firestore-säännöt gigs-kokoelmalle.',
+      'Keikkojen synkronointi ei onnistunut. Tarkista Firebase-yhteys ja että publicCalendarGigs-kokoelma on julkisesti luettavissa.',
     unplacedGigs:
       'Joitain keikkoja ei voitu sijoittaa kalenteriin — katso listanäkymästä.',
     prevMonth: 'Edellinen kuukausi',

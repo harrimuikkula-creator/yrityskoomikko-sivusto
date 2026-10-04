@@ -40,40 +40,27 @@ Vite upottaa `VITE_*`-muuttujat **buildin aikana**. Jos lisäsit muuttujat vasta
 
 1. **Site configuration** → **Environment variables** (kaikki `VITE_FIREBASE_*` arvot `.env`-tiedostosta)
 2. **Deploys** → **Trigger deploy** → **Clear cache and deploy site**
-3. Jos käytössä on monikäyttäjämalli, lisää myös `VITE_FIREBASE_OWNER_UID` (sen käyttäjän UID, jonka `gigs` näytetään sivulla)
+3. Jos käytössä on monikäyttäjämalli, lisää myös `VITE_FIREBASE_OWNER_UID` (sen käyttäjän UID, jonka `publicCalendarGigs` näytetään sivulla)
 
-#### Suositeltu kestävä korjaus (ohittaa client-rules-ongelmat)
+#### Julkinen keikkasyöte
 
-Tuotanto hakee keikat ensisijaisesti Netlify-funktiosta `/.netlify/functions/gigs`, joka käyttää Firebase Admin SDK:ta.
+Kalenteri kuuntelee Firestore-kokoelmaa `publicCalendarGigs` (projekti `standupapp2025`). Luku on julkinen, eikä vaadi kirjautumista. Sivusto suodattaa keikat `ownerId`-kentällä.
 
-1. Firebase Console → **Project settings** → **Service accounts** → **Generate new private key**
-2. Netlify → Environment variables → lisää:
-   - Key: `FIREBASE_SERVICE_ACCOUNT_JSON`
-   - Value: koko JSON yhdellä rivillä (koko service account -tiedoston sisältö)
-3. Varmista että `VITE_FIREBASE_OWNER_UID` on asetettu
-4. **Clear cache and deploy**
+Jos selain ei saa yhteyttä, varalla on Netlify-funktio `/.netlify/functions/gigs` (Firebase Admin SDK). Siihen tarvitaan `FIREBASE_SERVICE_ACCOUNT_JSON` ja `VITE_FIREBASE_OWNER_UID`.
 
-Ilman tätä client-puolen Firestore kaatuu, jos:
-- rules eivät salli julkista lukua `ownerId`:lle, tai
-- Google API key estää referrerin `harrimuikkula.netlify.app`
+Julkinen lukuoikeus:
 
 Firebase Console / Google Cloud:
 
-1. **Authentication** → **Settings** → **Authorized domains** → lisää `harrimuikkula.netlify.app` (ja oma domain)
-2. **Authentication** → **Sign-in method** → **Anonymous** → **Enable**
-3. **Firestore** → **Rules** (varavaihtoehto clientille):
+1. **Firestore** → **Rules**:
 
 ```
-match /gigs/{id} {
-  allow read: if resource.data.ownerId == "YOUR_FIREBASE_OWNER_UID"
-    || (signedIn() && canAccessOwner(resource.data.ownerId));
-  allow create: if signedIn() && createOwnerOk();
-  allow update: if signedIn() && canAccessOwner(resource.data.ownerId) && ownerUnchanged();
-  allow delete: if signedIn() && canAccessOwner(resource.data.ownerId);
+match /publicCalendarGigs/{id} {
+  allow read: if true;
 }
 ```
 
-4. Google Cloud → **APIs & Credentials** → Firebase API key → HTTP referrers → lisää:
+2. Google Cloud → **APIs & Credentials** → Firebase API key → HTTP referrers → lisää:
    - `https://harrimuikkula.netlify.app/*`
    - `https://*.netlify.app/*`
    - `http://localhost:5173/*`
