@@ -1,5 +1,6 @@
 import { initializeApp, cert, getApps } from 'firebase-admin/app'
-import { getFirestore, FieldValue } from 'firebase-admin/firestore'
+import { getFirestore } from 'firebase-admin/firestore'
+import { nextVisitStats, parseVisitStats } from './visitStats.mjs'
 
 function getServiceAccount() {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON
@@ -28,13 +29,25 @@ export function getAdminDb() {
   return getFirestore()
 }
 
-export async function incrementSiteVisitCount() {
+export async function incrementSiteVisitCount(place = {}) {
   const db = getAdminDb()
   if (!db) return null
 
   const ref = db.doc('siteStats/visits')
-  await ref.set({ totalVisits: FieldValue.increment(1) }, { merge: true })
   const snap = await ref.get()
-  const totalVisits = snap.data()?.totalVisits
-  return Number.isFinite(totalVisits) ? totalVisits : null
+  const data = snap.data() || {}
+  const previous = parseVisitStats(data.breakdown, data.totalVisits)
+  if (Number.isFinite(Number(data.totalVisits))) previous.totalVisits = Number(data.totalVisits)
+  const next = nextVisitStats(previous, place)
+  await ref.set(
+    {
+      totalVisits: next.totalVisits,
+      breakdown: JSON.stringify({
+        countries: next.countries,
+        cities: next.cities,
+      }),
+    },
+    { merge: true },
+  )
+  return next
 }

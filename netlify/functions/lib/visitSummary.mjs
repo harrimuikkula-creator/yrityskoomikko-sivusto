@@ -72,6 +72,54 @@ export function describeDevice(userAgent = '', screen = '', headers = {}) {
   return [browser, os, browser || os ? kind : '', size].filter(Boolean).join(' · ')
 }
 
+export function visitPlace(geo) {
+  const city = String(geo?.city || '').trim()
+  const countryName = String(geo?.country?.name || geo?.countryName || '').trim()
+  const countryCode = String(geo?.country?.code || geo?.countryCode || '').trim()
+  return {
+    city,
+    country: countryNameFromCode(countryCode) || countryName,
+  }
+}
+
+export function formatCountList(counts) {
+  const entries = Object.entries(counts || {})
+    .map(([name, count]) => [String(name), Number(count)])
+    .filter(([name, count]) => name && Number.isFinite(count) && count > 0)
+    .sort((a, b) => {
+      const aUnknown = a[0].startsWith('Ei ')
+      const bUnknown = b[0].startsWith('Ei ')
+      if (aUnknown !== bUnknown) return aUnknown ? 1 : -1
+      return b[1] - a[1] || a[0].localeCompare(b[0], 'fi')
+    })
+
+  if (!entries.length) return '—'
+
+  const lines = []
+  let used = 0
+  for (const [name, count] of entries) {
+    const line = `${name} — ${count}`
+    if (lines.length > 0 && used + line.length + 1 > 900) {
+      lines.push(`… ja ${entries.length - lines.length} muuta`)
+      break
+    }
+    lines.push(line)
+    used += line.length + 1
+  }
+  return lines.join('\n')
+}
+
+function locationFields({ countries, cities, totalVisits, bot }) {
+  if (bot || !countries || !cities) return []
+  const tracked = Object.values(countries).reduce((sum, count) => sum + Number(count || 0), 0)
+  const older = Number.isFinite(Number(totalVisits)) ? Number(totalVisits) - tracked : 0
+  const note = older > 0 ? `\n\nVanhat käynnit ilman paikkaa: ${older}` : ''
+  return [
+    { name: 'Maat', value: `${formatCountList(countries)}${note}` },
+    { name: 'Kaupungit', value: formatCountList(cities) },
+  ]
+}
+
 export function formatPlace(geo) {
   const city = String(geo?.city || '').trim()
   const region = String(geo?.subdivision?.name || '').trim()
@@ -106,6 +154,8 @@ export function buildVisitAlert({
   acceptLanguage = '',
   headers = {},
   geo = null,
+  countries = null,
+  cities = null,
   now = new Date(),
 } = {}) {
   const visitor = classifyVisitor({ userAgent, automation })
@@ -137,6 +187,7 @@ export function buildVisitAlert({
       { name: 'Paikka', value: formatPlace(geo) },
       { name: 'Laite', value: visitor.bot ? [device, visitor.label].filter(Boolean).join(' · ') : device || 'tuntematon' },
       { name: 'Käynti', value: visitor.bot ? '—' : returning ? 'palaava' : 'uusi', inline: true },
+      ...locationFields({ countries, cities, totalVisits, bot: visitor.bot }),
     ],
     footerText: 'yrityskoomikko-sivusto • visits',
   }

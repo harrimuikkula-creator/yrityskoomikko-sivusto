@@ -3,7 +3,7 @@ import {
   getDiscordWebhookUrl,
   postDiscordEmbed,
 } from './lib/discordWebhook.mjs'
-import { buildVisitAlert, classifyVisitor, readGeo } from './lib/visitSummary.mjs'
+import { buildVisitAlert, classifyVisitor, readGeo, visitPlace } from './lib/visitSummary.mjs'
 
 function json(statusCode, body) {
   return new Response(JSON.stringify(body), {
@@ -67,17 +67,20 @@ export default async (req, context) => {
       automation: client.automation,
     })
 
-    let totalVisits = null
+    const geo = readGeo(context, headers)
+    let stats = null
     if (!visitor.bot) {
       try {
-        totalVisits = await incrementVisitCount()
+        stats = await incrementVisitCount(visitPlace(geo))
       } catch (counterError) {
         console.warn('record-visit: visit counter failed', counterError)
       }
     }
 
     const alert = buildVisitAlert({
-      totalVisits,
+      totalVisits: stats?.totalVisits ?? null,
+      countries: stats?.countries ?? null,
+      cities: stats?.cities ?? null,
       pageUrl: client.pageUrl,
       referrer: client.referrer,
       siteLanguage: client.siteLanguage,
@@ -87,7 +90,7 @@ export default async (req, context) => {
       automation: client.automation,
       acceptLanguage: header(headers, 'accept-language'),
       headers,
-      geo: readGeo(context, headers),
+      geo,
     })
 
     const discordOk = await postDiscordEmbed(alert)
@@ -96,7 +99,7 @@ export default async (req, context) => {
       return json(503, { error: 'Discord webhook not configured' })
     }
 
-    return json(200, { ok: true, totalVisits, bot: visitor.bot, discord: discordOk })
+    return json(200, { ok: true, totalVisits: stats?.totalVisits ?? null, bot: visitor.bot, discord: discordOk })
   } catch (error) {
     console.error('record-visit failed', error)
     return json(500, { error: error?.message || 'Failed to record visit' })
