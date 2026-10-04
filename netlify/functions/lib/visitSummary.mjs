@@ -74,10 +74,12 @@ export function describeDevice(userAgent = '', screen = '', headers = {}) {
 
 export function formatPlace(geo) {
   const city = String(geo?.city || '').trim()
+  const region = String(geo?.subdivision?.name || '').trim()
   const countryName = String(geo?.country?.name || geo?.countryName || '').trim()
   const countryCode = String(geo?.country?.code || geo?.countryCode || '').trim()
   const country = countryNameFromCode(countryCode) || countryName
-  const place = [city, country].filter(Boolean).join(', ')
+  const locality = city || region
+  const place = [locality, country].filter(Boolean).join(', ')
   return place || 'ei tiedossa'
 }
 
@@ -141,11 +143,66 @@ export function buildVisitAlert({
 }
 
 export function readGeo(context, headers = {}) {
-  const geo = context?.geo
-  if (geo && (geo.city || geo.country)) return geo
-  const countryCode = headerValue(headers, 'x-country')
+  return (
+    mergeGeo(
+      normalizeGeo(context?.geo),
+      decodeGeoHeader(headers),
+      countryOnlyGeo(headerValue(headers, 'x-country')),
+    ) || null
+  )
+}
+
+function mergeGeo(...sources) {
+  const present = sources.filter(Boolean)
+  if (!present.length) return null
+
+  const city = present.map((geo) => geo.city).find(Boolean) || ''
+  const country = present.map((geo) => geo.country).find((item) => item?.code || item?.name) || null
+  const subdivision = present.map((geo) => geo.subdivision).find((item) => item?.name || item?.code) || null
+  if (!city && !country && !subdivision) return null
+  return { city, country, subdivision }
+}
+
+function decodeGeoHeader(headers) {
+  const raw = headerValue(headers, 'x-nf-geo').trim()
+  if (!raw) return null
+  return parseGeoJson(decodeBase64(raw)) || parseGeoJson(raw)
+}
+
+function decodeBase64(value) {
+  try {
+    return Buffer.from(value, 'base64').toString('utf8')
+  } catch {
+    return ''
+  }
+}
+
+function parseGeoJson(value) {
+  try {
+    const parsed = JSON.parse(value)
+    return normalizeGeo(parsed?.geo || parsed)
+  } catch {
+    return null
+  }
+}
+
+function countryOnlyGeo(code) {
+  const countryCode = String(code || '').trim()
   if (!countryCode) return null
   return { country: { code: countryCode } }
+}
+
+function normalizeGeo(geo) {
+  if (!geo || typeof geo !== 'object') return null
+  const city = String(geo.city || '').trim()
+  const countryCode = String(geo.country?.code || geo.countryCode || '').trim()
+  const countryName = String(geo.country?.name || geo.countryName || '').trim()
+  const regionName = String(geo.subdivision?.name || '').trim()
+  const regionCode = String(geo.subdivision?.code || '').trim()
+  const country = countryCode || countryName ? { code: countryCode, name: countryName } : null
+  const subdivision = regionName || regionCode ? { code: regionCode, name: regionName } : null
+  if (!city && !country && !subdivision) return null
+  return { city, country, subdivision }
 }
 
 function formatPage(pageUrl, siteLanguage, acceptLanguage) {

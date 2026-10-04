@@ -6,25 +6,32 @@ import {
 import { buildVisitAlert, classifyVisitor, readGeo } from './lib/visitSummary.mjs'
 
 function json(statusCode, body) {
-  return {
-    statusCode,
+  return new Response(JSON.stringify(body), {
+    status: statusCode,
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Content-Type',
     },
-    body: JSON.stringify(body),
-  }
+  })
+}
+
+function headerMap(headers) {
+  const map = {}
+  headers.forEach((value, key) => {
+    map[key.toLowerCase()] = value
+  })
+  return map
 }
 
 function header(headers, name) {
   return headers[name] || headers[name.toLowerCase()] || ''
 }
 
-function readClient(event) {
+function readClient(body) {
   let parsed = {}
   try {
-    parsed = JSON.parse(event.body || '{}')
+    parsed = JSON.parse(body || '{}')
   } catch {
     parsed = {}
   }
@@ -42,17 +49,18 @@ function readClient(event) {
   }
 }
 
-export async function handler(event, context) {
-  if (event.httpMethod === 'OPTIONS') {
+export default async (req, context) => {
+  if (req.method === 'OPTIONS') {
     return json(204, {})
   }
-  if (event.httpMethod !== 'POST') {
+  if (req.method !== 'POST') {
     return json(405, { error: 'Method not allowed' })
   }
 
   try {
-    const client = readClient(event)
-    const headers = event.headers || {}
+    const body = await req.text()
+    const client = readClient(body)
+    const headers = headerMap(req.headers)
     const userAgent = header(headers, 'user-agent')
     const visitor = classifyVisitor({
       userAgent,
