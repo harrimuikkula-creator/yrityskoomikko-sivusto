@@ -10,7 +10,7 @@ import {
 import { sendDiscordAlert } from '../lib/discordAlert'
 import SectionHeading from './ui/SectionHeading'
 
-const GIG_CACHE_KEY = 'gigCalendar:lastSuccessfulSnapshot:v2'
+const GIG_CACHE_KEY = 'gigCalendar:lastSuccessfulSnapshot:v4'
 const GIG_SYNC_ALERT_KEY = 'gigCalendar:lastSyncAlertAt'
 const GIG_SYNC_ALERT_COOLDOWN_MS = 12 * 60 * 60 * 1000
 const GIG_OWNER_UID = (import.meta.env.VITE_FIREBASE_OWNER_UID || '').trim()
@@ -131,10 +131,10 @@ function formatStartTime(startTime, dateLocale) {
   return String(dateLocale).toLowerCase().startsWith('fi') ? `klo ${startTime}` : startTime
 }
 
-function normalizeGigRecord(record, dateLocale) {
+function normalizeGigRecord(record, dateLocale, privateLabel) {
   const safe = toPublicGigRecord(record?.id, record)
-  if (!safe.id && !safe.date) return null
-  const view = buildPublicGigView(safe)
+  if (!safe?.id && !safe?.date) return null
+  const view = buildPublicGigView(safe, { privateLabel })
   return {
     id: safe.id,
     date: formatDate(safe.date, dateLocale),
@@ -144,14 +144,14 @@ function normalizeGigRecord(record, dateLocale) {
   }
 }
 
-function readCachedGigs(dateLocale) {
+function readCachedGigs(dateLocale, privateLabel) {
   if (typeof window === 'undefined') return []
   try {
     const raw = window.localStorage.getItem(GIG_CACHE_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
-    return parsed.map((gig) => normalizeGigRecord(gig, dateLocale)).filter(Boolean)
+    return parsed.map((gig) => normalizeGigRecord(gig, dateLocale, privateLabel)).filter(Boolean)
   } catch (error) {
     console.warn('Failed to read cached gigs snapshot.', error)
     return []
@@ -161,14 +161,16 @@ function readCachedGigs(dateLocale) {
 function writeCachedGigRecords(records) {
   if (typeof window === 'undefined') return
   try {
-    const serializable = records.map((record) => toPublicGigRecord(record.id, record))
+    const serializable = records
+      .map((record) => toPublicGigRecord(record.id, record))
+      .filter(Boolean)
     window.localStorage.setItem(GIG_CACHE_KEY, JSON.stringify(serializable))
   } catch (error) {
     console.warn('Failed to write cached gigs snapshot.', error)
   }
 }
 
-async function fetchGigsFromNetlifyFunction(dateLocale) {
+async function fetchGigsFromNetlifyFunction(dateLocale, privateLabel) {
   const response = await fetch('/.netlify/functions/gigs', {
     headers: { Accept: 'application/json' },
   })
@@ -179,9 +181,9 @@ async function fetchGigsFromNetlifyFunction(dateLocale) {
   if (!Array.isArray(payload?.gigs)) {
     throw new Error('Netlify gigs function returned invalid payload')
   }
-  const records = payload.gigs.map((gig) => toPublicGigRecord(gig.id, gig))
+  const records = payload.gigs.map((gig) => toPublicGigRecord(gig.id, gig)).filter(Boolean)
   writeCachedGigRecords(records)
-  return records.map((gig) => normalizeGigRecord(gig, dateLocale)).filter(Boolean)
+  return records.map((gig) => normalizeGigRecord(gig, dateLocale, privateLabel)).filter(Boolean)
 }
 
 async function alertGigSyncFailure({ primaryError, retryError }) {
@@ -677,7 +679,7 @@ function GigLoadingState({ label }) {
 export default function GigCalendar() {
   const { content } = useLanguage()
   const { calendar } = content
-  const [gigs, setGigs] = useState(() => readCachedGigs(calendar.dateLocale))
+  const [gigs, setGigs] = useState(() => readCachedGigs(calendar.dateLocale, calendar.private))
   const [isLoading, setIsLoading] = useState(true)
   const [syncFailed, setSyncFailed] = useState(false)
   const [view, setView] = useState('list')
@@ -728,17 +730,22 @@ export default function GigCalendar() {
   useEffect(() => {
     let unsubscribe = () => {}
     let cancelled = false
+    let netlifyWon = false
+    let publicRecords = []
 
     const applyRecords = (records) => {
       writeCachedGigRecords(records)
       setGigs(
-        records.map((record) => normalizeGigRecord(record, calendar.dateLocale)).filter(Boolean),
+        records
+          .map((record) => normalizeGigRecord(record, calendar.dateLocale, calendar.private))
+          .filter(Boolean),
       )
       setSyncFailed(false)
+      setIsLoading(false)
     }
 
     const fail = (primaryError, retryError) => {
-      const cachedGigs = readCachedGigs(calendar.dateLocale)
+      const cachedGigs = readCachedGigs(calendar.dateLocale, calendar.private)
       if (cachedGigs.length > 0) setGigs(cachedGigs)
       setSyncFailed(true)
       setIsLoading(false)
@@ -746,11 +753,13 @@ export default function GigCalendar() {
       alertGigSyncFailure({ primaryError, retryError })
     }
 
-    const loadFromNetlify = async () => {
-      const apiGigs = await fetchGigsFromNetlifyFunction(calendar.dateLocale)
-      if (cancelled) return
-      setGigs(apiGigs)
-      setSyncFailed(false)
+    const showPublicFallback = () => {
+      const records = publicRecords.filter(Boolean)
+      if (records.length > 0) {
+        applyRecords(records)
+        return true
+      }
+      return false
     }
 
     if (SIMULATE_GIG_SYNC_FAILURE) {
@@ -763,48 +772,44 @@ export default function GigCalendar() {
       return undefined
     }
 
-    if (!db) {
-      loadFromNetlify()
-        .catch((error) => {
-          if (!cancelled) fail(error)
-        })
-        .finally(() => {
-          if (!cancelled) setIsLoading(false)
-        })
-      return () => {
-        cancelled = true
-      }
+    if (db) {
+      unsubscribe = onSnapshot(
+        query(
+          collection(db, PUBLIC_CALENDAR_COLLECTION),
+          where('ownerId', '==', GIG_OWNER_UID),
+        ),
+        (snapshot) => {
+          publicRecords = snapshot.docs
+            .map((doc) => toPublicGigRecord(doc.id, doc.data()))
+            .filter(Boolean)
+          if (cancelled || netlifyWon) return
+          applyRecords(publicRecords)
+        },
+        (error) => {
+          console.warn('Public calendar listener failed.', error)
+        },
+      )
     }
 
-    const gigsQuery = query(
-      collection(db, PUBLIC_CALENDAR_COLLECTION),
-      where('ownerId', '==', GIG_OWNER_UID),
-    )
-
-    unsubscribe = onSnapshot(
-      gigsQuery,
-      (snapshot) => {
+    fetchGigsFromNetlifyFunction(calendar.dateLocale, calendar.private)
+      .then((apiGigs) => {
         if (cancelled) return
-        applyRecords(snapshot.docs.map((doc) => toPublicGigRecord(doc.id, doc.data())))
+        netlifyWon = true
+        setGigs(apiGigs)
+        setSyncFailed(false)
         setIsLoading(false)
-      },
-      (error) => {
-        console.warn('Public calendar listener failed, trying Netlify function.', error)
-        loadFromNetlify()
-          .catch((apiError) => {
-            if (!cancelled) fail(error, apiError)
-          })
-          .finally(() => {
-            if (!cancelled) setIsLoading(false)
-          })
-      },
-    )
+      })
+      .catch((error) => {
+        if (cancelled || netlifyWon) return
+        console.warn('Netlify gigs function unavailable, using the public feed.', error)
+        if (!showPublicFallback()) fail(error)
+      })
 
     return () => {
       cancelled = true
       unsubscribe()
     }
-  }, [calendar.dateLocale])
+  }, [calendar.dateLocale, calendar.private])
 
   const isEmpty = upcomingGigs.length === 0
   const showLoading = isLoading && isEmpty

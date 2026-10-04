@@ -1,5 +1,7 @@
 import { getAdminDb } from './lib/firebaseAdmin.mjs'
-import { PUBLIC_CALENDAR_COLLECTION, toPublicGigRecord } from '../../src/lib/publicCalendarGig.js'
+import { PUBLIC_CALENDAR_COLLECTION, mergeGigSources } from '../../src/lib/publicCalendarGig.js'
+
+const GIGS_COLLECTION = 'gigs'
 
 function json(statusCode, body) {
   return {
@@ -40,16 +42,17 @@ export async function handler(event) {
       return json(500, { error: 'FIREBASE_OWNER_UID / VITE_FIREBASE_OWNER_UID missing' })
     }
 
-    const snapshot = await db
-      .collection(PUBLIC_CALENDAR_COLLECTION)
-      .where('ownerId', '==', ownerId)
-      .get()
+    const [fullSnap, publicSnap] = await Promise.all([
+      db.collection(GIGS_COLLECTION).where('ownerId', '==', ownerId).get(),
+      db.collection(PUBLIC_CALENDAR_COLLECTION).where('ownerId', '==', ownerId).get(),
+    ])
 
-    const gigs = snapshot.docs
-      .map((doc) => toPublicGigRecord(doc.id, doc.data()))
-      .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+    const gigs = mergeGigSources(
+      fullSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+      publicSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+    )
 
-    return json(200, { gigs, source: 'publicCalendarGigs', count: gigs.length })
+    return json(200, { gigs, source: 'gigs+publicCalendarGigs', count: gigs.length })
   } catch (error) {
     console.error('gigs function failed', error)
     return json(500, {

@@ -44,7 +44,7 @@ Vite upottaa `VITE_*`-muuttujat **buildin aikana**. Jos lisäsit muuttujat vasta
 
 #### Julkinen keikkasyöte
 
-Kalenteri kuuntelee Firestore-kokoelmaa `publicCalendarGigs` (projekti `standupapp2025`). Luku on julkinen, eikä vaadi kirjautumista. Sivusto suodattaa keikat `ownerId`-kentällä.
+Kalenteri näyttää kaikki tulevat keikat. Julkinen syöte `publicCalendarGigs` peittää keikan, jossa on “Ei julkista tietoa”: silloin näkyy vain päivä ja paikkakunta. Muuten näkyvät klubi, aika ja liput. Sivusto suodattaa keikat `ownerId`-kentällä.
 
 Jos selain ei saa yhteyttä, varalla on Netlify-funktio `/.netlify/functions/gigs` (Firebase Admin SDK). Siihen tarvitaan `FIREBASE_SERVICE_ACCOUNT_JSON` ja `VITE_FIREBASE_OWNER_UID`.
 
