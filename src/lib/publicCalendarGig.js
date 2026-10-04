@@ -67,6 +67,7 @@ export function toPublicGigRecord(id, data = {}) {
     startTime: normalizeStartTime(data.startTime),
     venue: text(data.venue),
     clubName: text(data.clubName),
+    location: text(data.location),
     ticketUrl: text(data.ticketUrl),
     festivalName: text(data.festivalName),
   }
@@ -92,18 +93,27 @@ export function buildPublicGigView(record) {
   }
 
   const venueName = formatVenueName(record?.venue, record?.clubName)
+  const location = text(record?.location)
   const festivalName = text(record?.festivalName) || null
   const startTime = normalizeStartTime(record?.startTime) || null
   const ticketUrl = text(record?.ticketUrl) || null
-  const hasVenue = Boolean(venueName)
+  const cityLabel = city === '-' ? '' : city
+  const locationLabel =
+    location &&
+    location.toLowerCase() !== venueName.toLowerCase() &&
+    location.toLowerCase() !== cityLabel.toLowerCase()
+      ? location
+      : ''
+  const hasVenue = Boolean(venueName || locationLabel)
 
-  let displayPlace = venueName
-  let displaySubtitle = null
+  let displayPlace = venueName || locationLabel
+  let displaySubtitle = venueName && locationLabel ? locationLabel : null
   if (festivalName) {
     displayPlace = festivalName
-    displaySubtitle = hasVenue ? venueName : null
-  } else if (!hasVenue) {
-    displayPlace = city === '-' ? '' : city
+    const detail = [venueName, locationLabel].filter(Boolean).join(' · ')
+    displaySubtitle = detail || null
+  } else if (!displayPlace) {
+    displayPlace = cityLabel
   }
 
   return {
