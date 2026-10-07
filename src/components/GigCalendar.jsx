@@ -170,6 +170,22 @@ function writeCachedGigRecords(records) {
   }
 }
 
+const PUBLIC_FALLBACK_WAIT_MS = 8000
+const NETLIFY_RETRY_DELAY_MS = 1000
+
+function isNetworkFetchError(error) {
+  if (!error) return false
+  if (error.name === 'TypeError') return true
+  const message = String(error.message ?? error)
+  return /failed to fetch|networkerror|load failed|network request failed/i.test(message)
+}
+
+function wait(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
+
 async function fetchGigsFromNetlifyFunction(dateLocale, privateLabel) {
   const response = await fetch('/.netlify/functions/gigs', {
     headers: { Accept: 'application/json' },
@@ -186,7 +202,17 @@ async function fetchGigsFromNetlifyFunction(dateLocale, privateLabel) {
   return records.map((gig) => normalizeGigRecord(gig, dateLocale, privateLabel)).filter(Boolean)
 }
 
-async function alertGigSyncFailure({ primaryError, retryError }) {
+async function fetchGigsFromNetlifyFunctionWithRetry(dateLocale, privateLabel) {
+  try {
+    return await fetchGigsFromNetlifyFunction(dateLocale, privateLabel)
+  } catch (error) {
+    if (!isNetworkFetchError(error)) throw error
+    await wait(NETLIFY_RETRY_DELAY_MS)
+    return fetchGigsFromNetlifyFunction(dateLocale, privateLabel)
+  }
+}
+
+async function alertGigSyncFailure({ primaryError, fallbackError }) {
   if (gigSyncAlertInFlight) {
     await gigSyncAlertInFlight
     return
@@ -194,7 +220,7 @@ async function alertGigSyncFailure({ primaryError, retryError }) {
 
   gigSyncAlertInFlight = (async () => {
     const primaryErrorText = String(primaryError?.message ?? primaryError ?? 'unknown')
-    const retryErrorText = String(retryError?.message ?? retryError ?? 'none')
+    const fallbackErrorText = String(fallbackError?.message ?? fallbackError ?? 'none')
 
     await sendDiscordAlert({
       type: 'gig-sync',
@@ -208,7 +234,7 @@ async function alertGigSyncFailure({ primaryError, retryError }) {
         { name: 'Time', value: new Date().toISOString(), inline: true },
         { name: 'Page', value: window.location.href || '-' },
         { name: 'Primary error', value: `\`${primaryErrorText.slice(0, 1000)}\`` },
-        { name: 'Retry error', value: `\`${retryErrorText.slice(0, 1000)}\`` },
+        { name: 'Fallback error', value: `\`${fallbackErrorText.slice(0, 1000)}\`` },
       ],
     })
   })()
@@ -732,6 +758,10 @@ export default function GigCalendar() {
     let cancelled = false
     let netlifyWon = false
     let publicRecords = []
+    let publicReady = false
+    let publicError = null
+    let publicWaiters = []
+    let fallbackWaitTimer = null
 
     const applyRecords = (records) => {
       writeCachedGigRecords(records)
@@ -744,26 +774,66 @@ export default function GigCalendar() {
       setIsLoading(false)
     }
 
-    const fail = (primaryError, retryError) => {
+    const fail = (primaryError, fallbackErr) => {
       const cachedGigs = readCachedGigs(calendar.dateLocale, calendar.private)
       if (cachedGigs.length > 0) setGigs(cachedGigs)
       setSyncFailed(true)
       setIsLoading(false)
-      console.warn('Gig sync failed, using fallback data.', { primaryError, retryError })
-      alertGigSyncFailure({ primaryError, retryError })
+      console.warn('Gig sync failed, using fallback data.', {
+        primaryError,
+        fallbackError: fallbackErr,
+      })
+      alertGigSyncFailure({ primaryError, fallbackError: fallbackErr })
     }
 
-    const showPublicFallback = () => {
-      const records = publicRecords.filter(Boolean)
-      if (records.length > 0) {
-        applyRecords(records)
-        return true
+    const resolvePublicWaiters = () => {
+      const waiters = publicWaiters
+      publicWaiters = []
+      waiters.forEach((resolve) => resolve())
+    }
+
+    const markPublicReady = (records, error = null) => {
+      publicRecords = records
+      publicError = error
+      publicReady = true
+      resolvePublicWaiters()
+    }
+
+    const waitForPublicFallback = () => {
+      if (publicReady || !db) return Promise.resolve()
+      return new Promise((resolve) => {
+        publicWaiters.push(resolve)
+        if (fallbackWaitTimer != null) return
+        fallbackWaitTimer = window.setTimeout(() => {
+          fallbackWaitTimer = null
+          if (!publicReady) {
+            markPublicReady(
+              publicRecords,
+              new Error(`Public calendar fallback timed out after ${PUBLIC_FALLBACK_WAIT_MS}ms`),
+            )
+          }
+        }, PUBLIC_FALLBACK_WAIT_MS)
+      })
+    }
+
+    const applyPublicFallbackOrFail = async (netlifyError) => {
+      await waitForPublicFallback()
+      if (cancelled || netlifyWon) return
+
+      if (publicError && !publicRecords.length) {
+        fail(netlifyError, publicError)
+        return
       }
-      return false
+
+      // Snapshot arrived (even if empty) — empty calendar is success, not an alert.
+      applyRecords(publicRecords.filter(Boolean))
     }
 
     if (SIMULATE_GIG_SYNC_FAILURE) {
-      fail(new Error('Simulated gig sync failure (VITE_SIMULATE_GIG_SYNC_FAILURE=1)'))
+      fail(
+        new Error('Simulated gig sync failure (VITE_SIMULATE_GIG_SYNC_FAILURE=1)'),
+        new Error('simulation'),
+      )
       return undefined
     }
 
@@ -779,19 +849,26 @@ export default function GigCalendar() {
           where('ownerId', '==', GIG_OWNER_UID),
         ),
         (snapshot) => {
-          publicRecords = snapshot.docs
+          const records = snapshot.docs
             .map((doc) => toPublicGigRecord(doc.id, doc.data()))
             .filter(Boolean)
+          markPublicReady(records)
           if (cancelled || netlifyWon) return
-          applyRecords(publicRecords)
+          applyRecords(records)
         },
         (error) => {
           console.warn('Public calendar listener failed.', error)
+          markPublicReady([], error)
         },
+      )
+    } else {
+      markPublicReady(
+        [],
+        new Error('Firebase client is unavailable for the public calendar fallback'),
       )
     }
 
-    fetchGigsFromNetlifyFunction(calendar.dateLocale, calendar.private)
+    fetchGigsFromNetlifyFunctionWithRetry(calendar.dateLocale, calendar.private)
       .then((apiGigs) => {
         if (cancelled) return
         netlifyWon = true
@@ -802,11 +879,16 @@ export default function GigCalendar() {
       .catch((error) => {
         if (cancelled || netlifyWon) return
         console.warn('Netlify gigs function unavailable, using the public feed.', error)
-        if (!showPublicFallback()) fail(error)
+        applyPublicFallbackOrFail(error)
       })
 
     return () => {
       cancelled = true
+      if (fallbackWaitTimer != null) {
+        window.clearTimeout(fallbackWaitTimer)
+        fallbackWaitTimer = null
+      }
+      resolvePublicWaiters()
       unsubscribe()
     }
   }, [calendar.dateLocale, calendar.private])
