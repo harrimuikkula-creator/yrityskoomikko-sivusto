@@ -81,7 +81,8 @@ DISCORD_MENTION=<@123456789012345678>
 
 ### Kävijäilmoitukset Discordiin
 
-- Jokainen uusi selainistunto lähettää Discordiin ilmoituksen.
+- Todennäköinen ihmiskävijä lähettää Discordiin ilmoituksen (botti-UA:t eivät).
+- Sama IP (/24 botti-pareille) ei saa toista ilmoitusta ~45 minuuttiin — estää botti→“ihminen”-tuplat.
 - Viestissä on juokseva kävijälaskuri (`Kävijöitä yhteensä`).
 - Localhostia ei lasketa (ei spammiä kehityksessä).
 

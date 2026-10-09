@@ -173,11 +173,13 @@ function writeCachedGigRecords(records) {
 const PUBLIC_FALLBACK_WAIT_MS = 8000
 const NETLIFY_RETRY_DELAY_MS = 1000
 
-function isNetworkFetchError(error) {
+function isRetryableGigFetchError(error) {
   if (!error) return false
   if (error.name === 'TypeError') return true
   const message = String(error.message ?? error)
-  return /failed to fetch|networkerror|load failed|network request failed/i.test(message)
+  return /failed to fetch|networkerror|load failed|network request failed|gigs function failed \(502\)|gigs function failed \(503\)|gigs function failed \(504\)/i.test(
+    message,
+  )
 }
 
 function wait(ms) {
@@ -206,7 +208,7 @@ async function fetchGigsFromNetlifyFunctionWithRetry(dateLocale, privateLabel) {
   try {
     return await fetchGigsFromNetlifyFunction(dateLocale, privateLabel)
   } catch (error) {
-    if (!isNetworkFetchError(error)) throw error
+    if (!isRetryableGigFetchError(error)) throw error
     await wait(NETLIFY_RETRY_DELAY_MS)
     return fetchGigsFromNetlifyFunction(dateLocale, privateLabel)
   }
