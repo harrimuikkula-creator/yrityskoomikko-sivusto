@@ -34,6 +34,7 @@ const BOT_PATTERNS = [
   [/chrome-lighthouse|pagespeed|gtmetrix|pingdom/i, 'sivunopeustesti'],
   [/headlesschrome|phantomjs|selenium|puppeteer|playwright|cypress/i, 'automaatio'],
   [/\b(wget|curl|python-requests|python-urllib|scrapy|go-http-client|libwww-perl|okhttp|node-fetch|axios\/|httpclient|java\/)\b/i, 'skripti'],
+  [/preview\.app\.github\.dev|github-camo|rendertron|prerender|screaming frog|siteaudit|uptimerobot|statuscake|better uptime|pingdom\.com|datadog|newrelic|synthetic/i, 'monitori'],
   [/\bbot\b|\bcrawler\b|\bspider\b|\bcrawling\b/i, 'botti'],
 ]
 
@@ -45,19 +46,40 @@ const LANGUAGE_LABELS = {
   et: 'viro',
 }
 
-export function classifyVisitor({ userAgent = '', automation = false } = {}) {
+export function classifyVisitor({
+  userAgent = '',
+  automation = false,
+  screen = '',
+  languageCount = null,
+  hints = {},
+} = {}) {
   const ua = String(userAgent || '').trim()
   for (const [pattern, label] of BOT_PATTERNS) {
     if (pattern.test(ua)) {
       return { bot: true, uncertain: false, label }
     }
   }
-  if (automation) {
+  if (automation || hints.webdriver === true) {
     return { bot: true, uncertain: false, label: 'automaatio' }
   }
   if (!ua) {
-    return { bot: false, uncertain: true, label: '' }
+    return { bot: true, uncertain: true, label: 'ei-ua' }
   }
+
+  const normalizedScreen = String(screen || '').trim().toLowerCase()
+  if (normalizedScreen === '0x0' || normalizedScreen === '1x1') {
+    return { bot: true, uncertain: false, label: 'tyhjä-näyttö' }
+  }
+
+  if (Number.isFinite(Number(languageCount)) && Number(languageCount) <= 0) {
+    return { bot: true, uncertain: false, label: 'ei-kieliä' }
+  }
+
+  // Headless scrapers often omit Accept-Language entirely.
+  if (hints.missingAcceptLanguage === true && hints.noReferrer === true && !normalizedScreen) {
+    return { bot: true, uncertain: false, label: 'ohut-pyyntö' }
+  }
+
   return { bot: false, uncertain: false, label: '' }
 }
 
@@ -158,7 +180,7 @@ export function buildVisitAlert({
   cities = null,
   now = new Date(),
 } = {}) {
-  const visitor = classifyVisitor({ userAgent, automation })
+  const visitor = classifyVisitor({ userAgent, automation, screen })
   const device = describeDevice(userAgent, screen, headers)
   const typeValue = visitor.bot
     ? `**Botti** · ${visitor.label}`
@@ -174,6 +196,7 @@ export function buildVisitAlert({
 
   return {
     bot: visitor.bot,
+    uncertain: visitor.uncertain,
     username: 'Kävijäseuranta',
     content: visitor.bot ? '🤖 Botti sivustolla' : returning ? '👀 Palaava kävijä' : '👀 Uusi kävijä sivustolla',
     title: 'Sivustokäynti',

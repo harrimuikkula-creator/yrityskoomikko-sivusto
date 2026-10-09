@@ -69,7 +69,7 @@ match /publicCalendarGigs/{id} {
 
 - Kalenteri tallentaa selaimen `localStorage`en viimeisimmän onnistuneen keikkadatan.
 - Jos synkronointi epäonnistuu, sivu näyttää automaattisesti tämän viimeisimmän toimineen datan.
-- Discord-hälytys lähtee Netlify-funktion kautta (`/.netlify/functions/discord-alert`) oikeasta synkkivirheestä (cooldown 12h).
+- Discord-hälytys lähtee Netlify-funktion kautta (`/.netlify/functions/discord-alert`) vain kun sekä Netlify-proxy että Firestore-fallback epäonnistuvat (cooldown 12h). Hetkellinen `Failed to fetch` ei enää hälytä, jos julkinen syöte ehtii vastata.
 
 ```
 # Netlify Environment variables (server-only, Secret)
@@ -81,7 +81,8 @@ DISCORD_MENTION=<@123456789012345678>
 
 ### Kävijäilmoitukset Discordiin
 
-- Jokainen uusi selainistunto lähettää Discordiin ilmoituksen.
+- Todennäköinen ihmiskävijä lähettää Discordiin ilmoituksen (botti-UA:t eivät).
+- Sama IP (/24 botti-pareille) ei saa toista ilmoitusta ~45 minuuttiin — estää botti→“ihminen”-tuplat.
 - Viestissä on juokseva kävijälaskuri (`Kävijöitä yhteensä`).
 - Localhostia ei lasketa (ei spammiä kehityksessä).
 
