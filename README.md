@@ -44,7 +44,7 @@ Vite upottaa `VITE_*`-muuttujat **buildin aikana**. Jos lisäsit muuttujat vasta
 
 #### Julkinen keikkasyöte
 
-Kalenteri näyttää kaikki tulevat keikat. Julkinen syöte `publicCalendarGigs` peittää keikan, jossa on “Ei julkista tietoa”: silloin näkyy vain päivä ja paikkakunta. Muuten näkyvät klubi, aika ja liput. Sivusto suodattaa keikat `ownerId`-kentällä.
+Kalenteri näyttää kaikki tulevat keikat. Jos keikalla on “Ei julkista tietoa”, näkyy vain päivä ja paikkakunta; muuten klubi, aika ja liput. Piilotus poistuu heti kun joko `gigs` tai `publicCalendarGigs` on unhidattu — vanha peili ei jätä keikkaa city-only-tilaan. Sivusto suodattaa keikat `ownerId`-kentällä.
 
 Jos selain ei saa yhteyttä, varalla on Netlify-funktio `/.netlify/functions/gigs` (Firebase Admin SDK). Siihen tarvitaan `FIREBASE_SERVICE_ACCOUNT_JSON` ja `VITE_FIREBASE_OWNER_UID`.
 
