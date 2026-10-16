@@ -10,7 +10,7 @@ import {
 import { sendDiscordAlert } from '../lib/discordAlert'
 import SectionHeading from './ui/SectionHeading'
 
-const GIG_CACHE_KEY = 'gigCalendar:lastSuccessfulSnapshot:v4'
+const GIG_CACHE_KEY = 'gigCalendar:lastSuccessfulSnapshot:v5'
 const GIG_SYNC_ALERT_KEY = 'gigCalendar:lastSyncAlertAt'
 const GIG_SYNC_ALERT_COOLDOWN_MS = 12 * 60 * 60 * 1000
 const GIG_OWNER_UID = (import.meta.env.VITE_FIREBASE_OWNER_UID || '').trim()

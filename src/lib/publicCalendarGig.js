@@ -75,44 +75,86 @@ export function toPublicGigRecord(id, data = {}) {
   }
 }
 
+function preferText(...values) {
+  for (const value of values) {
+    const next = text(value)
+    if (next) return next
+  }
+  return ''
+}
+
 /**
- * Full gig list, with the public feed hiding details when hidePublicDetails is set.
- * Applied gigs are left out. A public-only row is kept.
+ * Full gig list + public feed.
+ * Hide only when every available source still says hidden. If either `gigs` or
+ * `publicCalendarGigs` is unhidden, show details from that source (and fill
+ * blanks from the other). Stale mirrors must not keep city-only after StandUpp
+ * turns off “Ei julkista tietoa”. Public-only rows are still kept.
  */
 export function mergeGigSources(fullGigs = [], publicGigs = []) {
-  const hiddenIds = new Set(
-    publicGigs.filter((gig) => isPublicDetailsHidden(gig)).map((gig) => text(gig.id)),
-  )
+  const publicById = new Map()
+  for (const gig of publicGigs) {
+    const id = text(gig?.id)
+    if (id) publicById.set(id, gig)
+  }
+
   const byId = new Map()
 
   for (const gig of fullGigs) {
-    const id = text(gig.id)
-    const hidden = hiddenIds.has(id) || isPublicDetailsHidden(gig)
-    const source = hidden
-      ? {
-          date: gig.date,
-          city: gig.city,
-          hidePublicDetails: true,
-          bookingStatus: gig.bookingStatus,
-        }
-      : gig
+    const id = text(gig?.id)
+    if (!id) continue
+    const pub = publicById.get(id)
+    const fullHidden = isPublicDetailsHidden(gig)
+    const publicHidden = pub ? isPublicDetailsHidden(pub) : true
+    const hidden = fullHidden && publicHidden
+
+    let source
+    if (hidden) {
+      source = {
+        date: gig.date || pub?.date,
+        city: preferText(gig.city, pub?.city),
+        hidePublicDetails: true,
+        bookingStatus: gig.bookingStatus,
+        eventType: gig.eventType || pub?.eventType,
+      }
+    } else if (!fullHidden) {
+      source = {
+        ...gig,
+        date: gig.date || pub?.date,
+        city: preferText(gig.city, pub?.city),
+        startTime: preferText(gig.startTime, pub?.startTime),
+        venue: preferText(gig.venue, pub?.venue),
+        clubName: preferText(gig.clubName, pub?.clubName),
+        location: preferText(gig.location, pub?.location),
+        ticketUrl: preferText(gig.ticketUrl, pub?.ticketUrl),
+        festivalName: preferText(gig.festivalName, pub?.festivalName),
+        hidePublicDetails: false,
+        eventType: gig.eventType || pub?.eventType,
+      }
+    } else {
+      // Full gig still marked hidden, but public feed was unhidden — use public details.
+      source = {
+        ...pub,
+        date: pub?.date || gig.date,
+        city: preferText(pub?.city, gig.city),
+        startTime: preferText(pub?.startTime, gig.startTime),
+        venue: preferText(pub?.venue, gig.venue),
+        clubName: preferText(pub?.clubName, gig.clubName),
+        location: preferText(pub?.location, gig.location),
+        ticketUrl: preferText(pub?.ticketUrl, gig.ticketUrl),
+        festivalName: preferText(pub?.festivalName, gig.festivalName),
+        hidePublicDetails: false,
+        bookingStatus: gig.bookingStatus,
+        eventType: pub?.eventType || gig.eventType,
+      }
+    }
+
     const record = toPublicGigRecord(id, source)
     if (record) byId.set(record.id, record)
   }
 
   for (const gig of publicGigs) {
-    const id = text(gig.id)
-    const existing = byId.get(id)
-    if (isPublicDetailsHidden(gig)) {
-      const record = toPublicGigRecord(id, {
-        date: gig.date || existing?.date,
-        city: gig.city || existing?.city,
-        hidePublicDetails: true,
-      })
-      if (record) byId.set(record.id, record)
-      continue
-    }
-    if (existing) continue
+    const id = text(gig?.id)
+    if (!id || byId.has(id)) continue
     const record = toPublicGigRecord(id, gig)
     if (record) byId.set(record.id, record)
   }
