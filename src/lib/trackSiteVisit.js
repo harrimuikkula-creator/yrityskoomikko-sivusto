@@ -1,13 +1,12 @@
-const SESSION_KEY = 'siteVisitTracked:v2'
+const SESSION_KEY = 'siteVisitTracked:v3'
 const SEEN_KEY = 'siteVisitSeen:v1'
-const ENGAGE_WAIT_MS = 2500
 
 let trackedThisPage = false
 
 /**
- * Record one visit per browser tab session and notify Discord with running total.
- * Skips localhost to avoid spam during development.
- * Waits briefly for real engagement so thin headless hits are less likely to alert.
+ * Record one visit per successful Discord alert (or server duplicate-ip skip).
+ * If the server skips as bot/uncertain, do NOT persist the session gate so a
+ * later real visit can still alert.
  */
 export function trackSiteVisit() {
   if (typeof window === 'undefined' || trackedThisPage) return
@@ -16,7 +15,7 @@ export function trackSiteVisit() {
   if (host === 'localhost' || host === '127.0.0.1') return
 
   try {
-    if (window.sessionStorage.getItem(SESSION_KEY)) {
+    if (window.sessionStorage.getItem(SESSION_KEY) === 'sent') {
       trackedThisPage = true
       return
     }
@@ -24,46 +23,12 @@ export function trackSiteVisit() {
     // sessionStorage blocked — fall through with in-memory gate only.
   }
 
-  waitForEngagement()
-    .then(() => {
-      if (trackedThisPage) return
-      sendVisitBeacon()
-    })
-    .catch(() => {
-      // ignore
-    })
-}
-
-function waitForEngagement() {
-  return new Promise((resolve) => {
-    let settled = false
-    const finish = () => {
-      if (settled) return
-      settled = true
-      window.clearTimeout(timer)
-      window.removeEventListener('pointerdown', finish, true)
-      window.removeEventListener('keydown', finish, true)
-      window.removeEventListener('scroll', finish, true)
-      resolve()
-    }
-
-    const timer = window.setTimeout(finish, ENGAGE_WAIT_MS)
-    window.addEventListener('pointerdown', finish, { capture: true, once: true, passive: true })
-    window.addEventListener('keydown', finish, { capture: true, once: true })
-    window.addEventListener('scroll', finish, { capture: true, once: true, passive: true })
-  })
+  sendVisitBeacon()
 }
 
 function sendVisitBeacon() {
   if (trackedThisPage) return
   trackedThisPage = true
-
-  try {
-    if (window.sessionStorage.getItem(SESSION_KEY)) return
-    window.sessionStorage.setItem(SESSION_KEY, '1')
-  } catch {
-    // Keep in-memory gate; server IP dedupe covers storage-blocked scrapers.
-  }
 
   let returning = false
   try {
@@ -88,9 +53,25 @@ function sendVisitBeacon() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
     keepalive: true,
-  }).catch((error) => {
-    console.warn('Visit tracking failed.', error)
   })
+    .then(async (response) => {
+      const body = await response.json().catch(() => ({}))
+      // Persist only when Discord went out, or server already counted this IP.
+      if (body?.discord === true || body?.skipped === 'duplicate-ip') {
+        try {
+          window.sessionStorage.setItem(SESSION_KEY, 'sent')
+        } catch {
+          // ignore
+        }
+      } else {
+        // Allow a retry on the next page load after bot/uncertain skips.
+        trackedThisPage = false
+      }
+    })
+    .catch((error) => {
+      trackedThisPage = false
+      console.warn('Visit tracking failed.', error)
+    })
 }
 
 function readSiteLanguage() {
