@@ -81,7 +81,8 @@ DISCORD_MENTION=<@123456789012345678>
 
 ### Kävijäilmoitukset Discordiin
 
-- Todennäköinen ihmiskävijä lähettää Discordiin ilmoituksen (botti-UA:t eivät).
+- Discordiin lähtee vain todennäköinen ihmiskävijä. Botti vs ihminen on **arvaus** (tunnetut crawler-UA:t + `navigator.webdriver`) — sitä ei voi tietää varmasti.
+- Selvät botti-UA:t eivät lähetä Discord-viestiä.
 - Sama IP (/24 botti-pareille) ei saa toista ilmoitusta ~45 minuuttiin — estää botti→“ihminen”-tuplat.
 - Viestissä on juokseva kävijälaskuri (`Kävijöitä yhteensä`).
 - Localhostia ei lasketa (ei spammiä kehityksessä).

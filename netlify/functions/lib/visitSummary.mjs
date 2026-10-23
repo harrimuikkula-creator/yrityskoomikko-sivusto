@@ -46,11 +46,16 @@ const LANGUAGE_LABELS = {
   et: 'viro',
 }
 
+/**
+ * Heuristic only — cannot know bot vs human with certainty.
+ * Use high-confidence signals (known crawler UA / webdriver). Soft signals
+ * like empty language lists or missing Accept-Language are too often real
+ * privacy browsers and must not force "bot".
+ */
 export function classifyVisitor({
   userAgent = '',
   automation = false,
   screen = '',
-  languageCount = null,
   hints = {},
 } = {}) {
   const ua = String(userAgent || '').trim()
@@ -63,21 +68,13 @@ export function classifyVisitor({
     return { bot: true, uncertain: false, label: 'automaatio' }
   }
   if (!ua) {
-    return { bot: true, uncertain: true, label: 'ei-ua' }
+    // Not a confident bot — just not enough signal to alert as a human.
+    return { bot: false, uncertain: true, label: 'ei-ua' }
   }
 
   const normalizedScreen = String(screen || '').trim().toLowerCase()
   if (normalizedScreen === '0x0' || normalizedScreen === '1x1') {
     return { bot: true, uncertain: false, label: 'tyhjä-näyttö' }
-  }
-
-  if (Number.isFinite(Number(languageCount)) && Number(languageCount) <= 0) {
-    return { bot: true, uncertain: false, label: 'ei-kieliä' }
-  }
-
-  // Headless scrapers often omit Accept-Language entirely.
-  if (hints.missingAcceptLanguage === true && hints.noReferrer === true && !normalizedScreen) {
-    return { bot: true, uncertain: false, label: 'ohut-pyyntö' }
   }
 
   return { bot: false, uncertain: false, label: '' }

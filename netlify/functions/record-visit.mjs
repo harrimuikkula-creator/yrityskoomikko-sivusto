@@ -74,26 +74,26 @@ export default async (req, context) => {
       userAgent,
       automation: client.automation,
       screen: client.screen,
-      languageCount: client.languageCount,
       hints: {
         webdriver: client.automation === true,
-        missingAcceptLanguage: !acceptLanguage,
-        noReferrer: !client.referrer,
       },
     })
 
     const geo = readGeo(context, headers)
     const ip = readClientIp(req, context, headers)
-    const dedupe = await evaluateVisitDedupe({ ip, bot: visitor.bot })
+    // Only confident bots poison the IP twin-suppress window.
+    const dedupe = await evaluateVisitDedupe({ ip, bot: visitor.bot && !visitor.uncertain })
 
-    // Bots and bot→Chrome twin hits: no Discord, no human counter.
-    if (visitor.bot || dedupe.skipCount) {
+    // Bots, uncertain beacons, and bot→Chrome twin hits: no Discord / no counter.
+    if (visitor.bot || visitor.uncertain || dedupe.skipCount) {
       return json(200, {
         ok: true,
         totalVisits: null,
         bot: visitor.bot,
+        uncertain: visitor.uncertain,
         discord: false,
-        skipped: dedupe.reason || (visitor.bot ? 'bot' : 'dedupe'),
+        skipped: dedupe.reason || (visitor.bot ? 'bot' : visitor.uncertain ? 'uncertain' : 'dedupe'),
+        label: visitor.label || null,
       })
     }
 
