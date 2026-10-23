@@ -1,6 +1,7 @@
 import { incrementVisitCount } from './lib/visitCounter.mjs'
 import {
   evaluateVisitDedupe,
+  looksLikeBrowserVisit,
   markHumanVisitAlerted,
   readClientIp,
 } from './lib/visitDedupe.mjs'
@@ -81,10 +82,19 @@ export default async (req, context) => {
 
     const geo = readGeo(context, headers)
     const ip = readClientIp(req, context, headers)
+    const trustHuman = looksLikeBrowserVisit({
+      userAgent,
+      screen: client.screen,
+      automation: client.automation,
+    })
     // Only confident bots poison the IP twin-suppress window.
-    const dedupe = await evaluateVisitDedupe({ ip, bot: visitor.bot && !visitor.uncertain })
+    const dedupe = await evaluateVisitDedupe({
+      ip,
+      bot: visitor.bot && !visitor.uncertain,
+      trustHuman: trustHuman && !visitor.bot && !visitor.uncertain,
+    })
 
-    // Bots, uncertain beacons, and bot→Chrome twin hits: no Discord / no counter.
+    // Bots, uncertain beacons, and thin bot→Chrome twins: no Discord / no counter.
     if (visitor.bot || visitor.uncertain || dedupe.skipCount) {
       return json(200, {
         ok: true,

@@ -1,4 +1,4 @@
-const SESSION_KEY = 'siteVisitTracked:v1'
+const SESSION_KEY = 'siteVisitTracked:v2'
 const SEEN_KEY = 'siteVisitSeen:v1'
 const ENGAGE_WAIT_MS = 2500
 
