@@ -5,7 +5,8 @@
  * clears a prior false bot mark on that IP.
  */
 
-const HUMAN_DEDUP_MS = 45 * 60 * 1000
+// Short window: block only rapid double-loads / twin tabs, not retests minutes later.
+const HUMAN_DEDUP_MS = 3 * 60 * 1000
 const BOT_TWIN_MS = 10 * 60 * 1000
 const recentByKey = new Map()
 
