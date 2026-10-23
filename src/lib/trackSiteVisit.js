@@ -1,34 +1,19 @@
-const SESSION_KEY = 'siteVisitTracked:v3'
 const SEEN_KEY = 'siteVisitSeen:v1'
 
-let trackedThisPage = false
+let requestedThisPage = false
 
 /**
- * Record one visit per successful Discord alert (or server duplicate-ip skip).
- * If the server skips as bot/uncertain, do NOT persist the session gate so a
- * later real visit can still alert.
+ * Notify the server of one page load. Server IP-dedupes Discord spam.
+ * No sessionStorage gate — ad blockers / prior skips must not silence later loads.
+ * Endpoint is named `site-pulse` because `record-visit` is commonly blocked.
  */
 export function trackSiteVisit() {
-  if (typeof window === 'undefined' || trackedThisPage) return
+  if (typeof window === 'undefined' || requestedThisPage) return
 
   const host = window.location.hostname
   if (host === 'localhost' || host === '127.0.0.1') return
 
-  try {
-    if (window.sessionStorage.getItem(SESSION_KEY) === 'sent') {
-      trackedThisPage = true
-      return
-    }
-  } catch {
-    // sessionStorage blocked — fall through with in-memory gate only.
-  }
-
-  sendVisitBeacon()
-}
-
-function sendVisitBeacon() {
-  if (trackedThisPage) return
-  trackedThisPage = true
+  requestedThisPage = true
 
   let returning = false
   try {
@@ -48,30 +33,15 @@ function sendVisitBeacon() {
     languageCount: Array.isArray(navigator.languages) ? navigator.languages.length : 0,
   }
 
-  fetch('/.netlify/functions/record-visit', {
+  fetch('/.netlify/functions/site-pulse', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
     keepalive: true,
+  }).catch((error) => {
+    requestedThisPage = false
+    console.warn('Site pulse failed.', error)
   })
-    .then(async (response) => {
-      const body = await response.json().catch(() => ({}))
-      // Persist only when Discord went out, or server already counted this IP.
-      if (body?.discord === true || body?.skipped === 'duplicate-ip') {
-        try {
-          window.sessionStorage.setItem(SESSION_KEY, 'sent')
-        } catch {
-          // ignore
-        }
-      } else {
-        // Allow a retry on the next page load after bot/uncertain skips.
-        trackedThisPage = false
-      }
-    })
-    .catch((error) => {
-      trackedThisPage = false
-      console.warn('Visit tracking failed.', error)
-    })
 }
 
 function readSiteLanguage() {
