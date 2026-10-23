@@ -1,9 +1,12 @@
 /**
  * Short-window visit alert dedupe by client IP.
- * Suppresses bot→spoofed-human twin alerts from the same crawler infra.
+ * Suppresses rapid duplicate human alerts. Bot→spoofed-human twins are only
+ * suppressed for thin beacons — a normal browser visit always gets through and
+ * clears a prior false bot mark on that IP.
  */
 
-const MEMORY_TTL_MS = 45 * 60 * 1000
+const HUMAN_DEDUP_MS = 45 * 60 * 1000
+const BOT_TWIN_MS = 10 * 60 * 1000
 const recentByKey = new Map()
 
 function pruneMemory(now = Date.now()) {
@@ -14,13 +17,6 @@ function pruneMemory(now = Date.now()) {
 
 function normalizeIp(ip) {
   return String(ip || '').trim().slice(0, 80)
-}
-
-function ipv4Slash24(ip) {
-  const raw = normalizeIp(ip)
-  if (!/^\d{1,3}(?:\.\d{1,3}){3}$/.test(raw)) return ''
-  const parts = raw.split('.')
-  return `${parts[0]}.${parts[1]}.${parts[2]}.0/24`
 }
 
 async function getDedupeStore() {
@@ -84,41 +80,51 @@ async function writeEntry(store, key, entry) {
   await writeBlobEntry(store, key, entry)
 }
 
+/** Normal JS beacon from a real browser — must not be silenced by a prior bot mark. */
+export function looksLikeBrowserVisit({ userAgent = '', screen = '', automation = false } = {}) {
+  if (automation) return false
+  if (!/Mozilla\/\d/i.test(String(userAgent || ''))) return false
+  const match = /^(\d{2,5})x(\d{2,5})$/.exec(String(screen || '').trim())
+  if (!match) return false
+  const width = Number(match[1])
+  const height = Number(match[2])
+  return width >= 200 && height >= 200
+}
+
 /**
  * @returns {Promise<{ skipDiscord: boolean, skipCount: boolean, reason: string|null }>}
  */
-export async function evaluateVisitDedupe({ ip, bot }) {
+export async function evaluateVisitDedupe({ ip, bot, trustHuman = false }) {
   const exact = normalizeIp(ip)
   if (!exact || exact === 'unknown') {
     return { skipDiscord: false, skipCount: false, reason: null }
   }
 
   const store = await getDedupeStore()
-  const subnet = ipv4Slash24(exact)
   const now = Date.now()
 
   if (bot) {
     const entry = {
       botSeenAt: now,
       humanAlertedAt: 0,
-      expiresAt: now + MEMORY_TTL_MS,
+      expiresAt: now + BOT_TWIN_MS,
     }
     await writeEntry(store, exact, entry)
-    if (subnet) await writeEntry(store, subnet, entry)
     return { skipDiscord: true, skipCount: true, reason: 'bot' }
   }
 
   const exactEntry = await readEntry(store, exact)
-  const subnetEntry = subnet ? await readEntry(store, subnet) : null
 
-  if (exactEntry?.botSeenAt && now - exactEntry.botSeenAt < MEMORY_TTL_MS) {
+  // Prior false bot marks must not block a normal browser visit.
+  if (
+    !trustHuman &&
+    exactEntry?.botSeenAt &&
+    now - exactEntry.botSeenAt < BOT_TWIN_MS
+  ) {
     return { skipDiscord: true, skipCount: true, reason: 'bot-twin' }
   }
-  if (subnetEntry?.botSeenAt && now - subnetEntry.botSeenAt < MEMORY_TTL_MS) {
-    return { skipDiscord: true, skipCount: true, reason: 'bot-twin' }
-  }
 
-  if (exactEntry?.humanAlertedAt && now - exactEntry.humanAlertedAt < MEMORY_TTL_MS) {
+  if (exactEntry?.humanAlertedAt && now - exactEntry.humanAlertedAt < HUMAN_DEDUP_MS) {
     return { skipDiscord: true, skipCount: true, reason: 'duplicate-ip' }
   }
 
@@ -130,12 +136,12 @@ export async function markHumanVisitAlerted(ip) {
   if (!exact || exact === 'unknown') return
 
   const store = await getDedupeStore()
-  const existing = (await readEntry(store, exact)) || {}
   const now = Date.now()
+  // Clear botSeenAt so a recovered false-positive IP is fully unblocked.
   await writeEntry(store, exact, {
-    botSeenAt: existing.botSeenAt || 0,
+    botSeenAt: 0,
     humanAlertedAt: now,
-    expiresAt: now + MEMORY_TTL_MS,
+    expiresAt: now + HUMAN_DEDUP_MS,
   })
 }
 
