@@ -84,7 +84,7 @@ DISCORD_MENTION=<@123456789012345678>
 - Discordiin lähtee vain todennäköinen ihmiskävijä. Botti vs ihminen on **arvaus** (tunnetut crawler-UA:t + `navigator.webdriver`) — sitä ei voi tietää varmasti.
 - Beacon: `/.netlify/functions/site-pulse` (ei `record-visit` — adblockerit blokkaavat usein “visit”/“track”-URL:it).
 - Selvät botti-UA:t eivät lähetä Discord-viestiä.
-- Sama IP ei saa toista ihmisilmoitusta ~45 minuuttiin.
+- Sama IP ei saa toista ihmisilmoitusta ~3 minuuttiin (estää tuplalataukset, ei lukitse pidemmäksi aikaa).
 - Viestissä on juokseva kävijälaskuri (`Kävijöitä yhteensä`).
 - Localhostia ei lasketa (ei spammiä kehityksessä).
 
